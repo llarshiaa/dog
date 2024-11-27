@@ -2,6 +2,7 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKe
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, ConversationHandler
 from telegram.ext import filters
 import sqlite3
+import re
 
 # تنظیمات ربات
 BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
@@ -17,7 +18,8 @@ cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     referrals INTEGER DEFAULT 0,
-    balance INTEGER DEFAULT 0
+    balance INTEGER DEFAULT 0,
+    is_member INTEGER DEFAULT 0
 )
 """)
 conn.commit()
@@ -31,6 +33,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.message.text
 
     # بررسی لینک دعوت
+    referrer_id = None
     if context.args:
         referrer_id = int(context.args[0])
 
@@ -57,32 +60,23 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ], resize_keyboard=True)
         await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
-
-    # بررسی عضویت در کانال
+# بررسی عضویت در کانال
+async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.callback_query.from_user.id
     try:
+        # بررسی عضویت کاربر در کانال
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
-        
         if member.status in ["member", "administrator", "creator"]:
-            # اگر عضو شده باشد، تایید عضویت و ارسال پیام خوش‌آمد
-            await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=main_menu_keyboard)
-            
-            # بررسی وضعیت عضویت در دیتابیس
-            cursor.execute("SELECT is_member FROM users WHERE user_id = ?", (user_id,))
-            result = cursor.fetchone()
-            if result and result[0] == 1:
-                return  # اگر قبلاً عضو شده باشد، ادامه نده
+            # اگر کاربر عضو باشد
+            await update.callback_query.answer("✅ شما عضو کانال هستید.")
             # ذخیره وضعیت عضویت در دیتابیس
-            cursor.execute("INSERT INTO users (user_id, is_member) VALUES (?, 1)", (user_id,))
+            cursor.execute("UPDATE users SET is_member = 1 WHERE user_id = ?", (user_id,))
             conn.commit()
-
         else:
-            # اگر کاربر عضو نشده باشد
-            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
-            return
-
+            # اگر عضو نباشد
+            await update.callback_query.answer("⛔️ شما هنوز عضو کانال نشده‌اید.")
     except Exception as e:
-        # در صورت بروز هرگونه خطا
-        await update.message.reply_text(f"⛔️ مشکلی پیش آمد: {e}")
+        await update.callback_query.answer(f"⛔️ مشکلی پیش آمد: {e}")
 
 # نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -157,4 +151,3 @@ application.add_handler(withdrawal_handler)
 
 # اجرای ربات
 application.run_polling()
-
