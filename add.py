@@ -1,211 +1,166 @@
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, ConversationHandler
-from telegram.ext import filters
-import sqlite3
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler
+import logging
 
 # تنظیمات ربات
 BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
 CHANNEL_USERNAME = "tegaratnegar"  # نام کانال شما (بدون @)
-REWARD_PER_REFERRAL = 1  # پاداش به ازای هر زیرمجموعه
-BONUS_FOR_20_REFERRALS = 5  # پاداش برای 20 زیرمجموعه
-MIN_WITHDRAWAL_AMOUNT = 10  # حداقل مقدار برای برداشت
 
-# اتصال به پایگاه داده
-conn = sqlite3.connect("bot.db")
-cursor = conn.cursor()
-cursor.execute("""
-CREATE TABLE IF NOT EXISTS users (
-    user_id INTEGER PRIMARY KEY,
-    referrals INTEGER DEFAULT 0,
-    balance INTEGER DEFAULT 0,
-    username TEXT DEFAULT ''
-)
-""")
-conn.commit()
+# راه‌اندازی لاگ‌ها برای پیگیری خطاها
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# مراحل درخواست برداشت
-WAITING_FOR_WALLET = range(1)
+# اطلاعات کاربر ذخیره‌شده
+user_data = {}
 
 # شروع ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-    referrer_id = None
-
-    # بررسی لینک دعوت
-    if context.args:
-        referrer_id = int(context.args[0])
-
-    # ثبت کاربر در پایگاه داده
-    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    if not cursor.fetchone():
-        cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
-        conn.commit()
-
-        # اگر کاربر با لینک دعوت وارد شده
-        if referrer_id and referrer_id != user_id:
-            cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (referrer_id,))
-            ref_data = cursor.fetchone()
-            if ref_data:
-                referrals = ref_data[0] + 1
-                cursor.execute("UPDATE users SET referrals = ? WHERE user_id = ?", (referrals, referrer_id))
-                cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
-                               (REWARD_PER_REFERRAL, referrer_id))
-                conn.commit()
-
-                # ارسال پیام تبریک به معرف
-                await context.bot.send_message(
-                    chat_id=referrer_id,
-                    text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
-                )
-                if referrals == 20:  # بررسی پاداش 20 زیرمجموعه
-                    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
-                                   (BONUS_FOR_20_REFERRALS, referrer_id))
-                    conn.commit()
-                    await context.bot.send_message(
-                        chat_id=referrer_id,
-                        text="🎁 تبریک! شما به 20 زیرمجموعه رسیدید و 5 دوج‌کوین هدیه گرفتید."
-                    )
-
-    # نمایش گزینه‌های عضویت
+    
+    # نمایش گزینه‌ها برای عضویت
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}")],
-        [InlineKeyboardButton("✅ تایید عضویت", callback_data="confirm_membership")],
+        [InlineKeyboardButton("✅ تایید عضویت", callback_data="confirm_membership")]
     ])
+    
     await update.message.reply_text(
-        "⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید. پس از عضویت، لطفاً دکمه تایید عضویت را بزنید:",
+        "⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید. سپس دکمه تایید عضویت را بزنید:",
         reply_markup=keyboard
     )
 
-
+# تایید عضویت
 async def confirm_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.callback_query.from_user.id
 
-    # ثبت و تایید عضویت
-    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    if cursor.fetchone():
-        # ارسال پیام تبریک به فرد دعوت‌کننده
-        referrer_id = None
-        if update.callback_query.data != "confirm_membership":
-            referrer_id = int(update.callback_query.data.split('_')[-1])
+    # استفاده از get_chat_member برای بررسی عضویت کاربر در کانال
+    chat_member = await context.bot.get_chat_member(CHANNEL_USERNAME, user_id)
+    
+    if chat_member.status == 'member':  # اگر کاربر عضو کانال بود
+        # ارسال پیام تایید عضویت
+        await update.callback_query.answer("عضویت شما تایید شد! حالا می‌توانید از ربات استفاده کنید.")
         
-        if referrer_id:
-            await context.bot.send_message(
-                chat_id=referrer_id,
-                text=f"🎉 زیرمجموعه شما عضو شد! تبریک می‌گوییم!"
-            )
-
         # نمایش کیبورد شیشه‌ای بعد از تایید عضویت
         keyboard = ReplyKeyboardMarkup([
-            [KeyboardButton("👤 پروفایل")],
-            [KeyboardButton("🔗 لینک دعوت")],
-            [KeyboardButton("💰 درآمدزایی")],
-            [KeyboardButton("💸 برداشت")],
+            [KeyboardButton("👤 پروفایل")]
         ], resize_keyboard=True)
-
-        await update.callback_query.answer("عضویت شما تایید شد. موفق باشید!")
+        
         await update.callback_query.edit_message_text(
             "✅ عضویت شما تایید شد! اکنون می‌توانید از ربات استفاده کنید.",
             reply_markup=keyboard
         )
+        
+        # ارسال پیام تبریک به دعوت‌کننده و افزودن پاداش دوج‌کوین به دعوت‌کننده
+        if 'referrer_id' in context.user_data:
+            referrer_id = context.user_data['referrer_id']
+            # اضافه کردن 1 دوج‌کوین به دعوت‌کننده
+            if 'dogecoin' not in user_data.get(referrer_id, {}):
+                user_data[referrer_id] = {'dogecoin': 0}  # اگر موجودی نداشت، ایجاد کنیم
+            user_data[referrer_id]['dogecoin'] += 1  # افزایش 1 دوج‌کوین
+            await context.bot.send_message(referrer_id, "🎉 کاربر شما به ربات پیوست! تبریک می‌گوییم! شما 1 دوج‌کوین پاداش دریافت کردید.")
     else:
+        # اگر کاربر هنوز عضو کانال نیست
         await update.callback_query.answer("شما ابتدا باید در کانال عضو شوید.")
+
+# ذخیره ID دعوت‌کننده
+async def handle_invite(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if 'referrer_id' not in context.user_data:
+        context.user_data['referrer_id'] = user_id  # ذخیره ID دعوت‌کننده
     
-    await update.callback_query.edit_message_text(
-        "✅ عضویت شما تایید شد! اکنون می‌توانید از ربات استفاده کنید."
+    # نمایش پیامی برای شروع عضویت
+    await update.message.reply_text(
+        "برای استفاده از ربات ابتدا باید عضو کانال شوید و سپس تایید عضویت را بزنید."
+    )
+    
+    # نمایش دکمه‌های عضویت
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}")],
+        [InlineKeyboardButton("✅ تایید عضویت", callback_data="confirm_membership")]
+    ])
+    
+    await update.message.reply_text(
+        "⛔️ ابتدا باید در کانال عضو شوید. سپس دکمه تایید عضویت را بزنید:",
+        reply_markup=keyboard
     )
 
-
-async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    cursor.execute("SELECT referrals, balance FROM users WHERE user_id = ?", (user_id,))
-    user_data = cursor.fetchone()
-
-    if user_data:
-        referrals, balance = user_data
-        profile_text = f"👤 پروفایل شما:\n\n" \
-                       f"💸 موجودی: {balance} دوج‌کوین\n" \
-                       f"👥 زیرمجموعه‌ها: {referrals}\n" \
-                       f"🔗 لینک دعوت شما: https://t.me/{context.bot.username}?start={user_id}"
-
-        await update.message.reply_text(profile_text)
-    else:
-        await update.message.reply_text("شما هنوز ثبت‌نام نکرده‌اید.")
-
-
-async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    referral_link = f"https://t.me/{context.bot.username}?start={user_id}"
-
-    await update.message.reply_text(f"🔗 لینک دعوت شما: {referral_link}")
-
-
-async def earning(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (user_id,))
-    referrals = cursor.fetchone()[0]
-
-    earning_amount = referrals * REWARD_PER_REFERRAL
-    await update.message.reply_text(f"💰 درآمد شما تا کنون: {earning_amount} دوج‌کوین")
-
-
-async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-    user_balance = cursor.fetchone()
+# پروفایل و لینک دعوت و درآمدزایی
+async def show_profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    invite_link = f"https://t.me/{context.bot.username}?start={update.effective_user.id}"
     
-    if user_balance and user_balance[0] >= MIN_WITHDRAWAL_AMOUNT:
-        await update.message.reply_text("لطفاً آدرس کیف پول خود را وارد کنید:")
-        return WAITING_FOR_WALLET
-    else:
-        await update.message.reply_text("برای برداشت باید حداقل مبلغ 10 دوج‌کوین داشته باشید.")
-        return ConversationHandler.END
+    # موجودی دوج‌کوین
+    dogecoin = user_data.get(user.id, {}).get('dogecoin', 0)
 
-async def wallet_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    wallet_address = update.message.text
-
-    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-    user_balance = cursor.fetchone()
+    profile_text = (
+        f"🔹 پروفایل شما\n\n"
+        f"نام: {user.first_name} {user.last_name if user.last_name else ''}\n"
+        f"شناسه کاربری: {user.username if user.username else 'ندارد'}\n"
+        f"شناسه کاربری تلگرام: @{user.username}\n"
+        f"شناسه کاربری ربات: {user.id}\n\n"
+        f"🔗 لینک دعوت شما: {invite_link}\n\n"
+        f"💰 موجودی دوج‌کوین شما: {dogecoin} DOGE"
+    )
     
-    if user_balance and user_balance[0] >= MIN_WITHDRAWAL_AMOUNT:
-        cursor.execute("UPDATE users SET balance = balance - ? WHERE user_id = ?", 
-                       (MIN_WITHDRAWAL_AMOUNT, user_id))
-        conn.commit()
-        await update.message.reply_text(f"برداشت موفقیت‌آمیز! مبلغ {MIN_WITHDRAWAL_AMOUNT} دوج‌کوین به آدرس {wallet_address} ارسال شد.")
-    else:
-        await update.message.reply_text("موجودی شما کافی نیست.")
+    # نمایش کیبورد شیشه‌ای با گزینه‌های پروفایل و درآمدزایی
+    keyboard = ReplyKeyboardMarkup([
+        [KeyboardButton("💸 برداشت")]
+    ], resize_keyboard=True)
     
-    return ConversationHandler.END
+    await update.message.reply_text(profile_text, reply_markup=keyboard)
 
+# برداشت دوج‌کوین
+async def withdraw_funds(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    dogecoin = user_data.get(user_id, {}).get('dogecoin', 0)
+    
+    if dogecoin >= 10:
+        # درخواست آدرس کیف پول
+        await update.message.reply_text("💸 برای برداشت دوج‌کوین، لطفاً آدرس کیف پول خود را وارد کنید.")
+        # تغییر وضعیت به حالت گرفتن آدرس کیف پول
+        context.user_data['awaiting_wallet_address'] = True
+    else:
+        await update.message.reply_text("💸 برای برداشت، باید حداقل 10 دوج‌کوین داشته باشید.")
 
-# ثبت دستورات و وضعیت‌ها
+# دریافت آدرس کیف پول
+async def handle_wallet_address(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # بررسی اینکه کاربر در حال وارد کردن آدرس کیف پول است
+    if context.user_data.get('awaiting_wallet_address', False):
+        wallet_address = update.message.text
+        
+        # ذخیره آدرس کیف پول (در واقع اینجا فقط نمایش داده می‌شود)
+        context.user_data['wallet_address'] = wallet_address
+        
+        # ارسال پیام به کاربر
+        await update.message.reply_text(f"✅ درخواست شما ثبت شد! به زودی واریز دوج‌کوین به آدرس کیف پول {wallet_address} انجام خواهد شد.")
+        
+        # ارسال پیام برای تایید به کاربر
+        await update.message.reply_text("💸 به زودی دوج‌کوین به کیف پول شما واریز می‌شود.")
+
+        # غیرفعال کردن حالت گرفتن آدرس کیف پول
+        context.user_data['awaiting_wallet_address'] = False
+
+# ثبت دستورات
 application = Application.builder().token(BOT_TOKEN).build()
 
+# اضافه کردن دستورات
 start_handler = CommandHandler("start", start)
 application.add_handler(start_handler)
 
+# اضافه کردن دستور ورود از طریق لینک دعوت
+application.add_handler(CommandHandler("invite", handle_invite))
+
+# اضافه کردن هنده برای تایید عضویت
 confirm_handler = CallbackQueryHandler(confirm_membership, pattern="^confirm_membership$")
 application.add_handler(confirm_handler)
 
-# اضافه کردن بخش‌های پروفایل، لینک دعوت، درآمدزایی و برداشت
-profile_handler = MessageHandler(filters.Regex('^👤 پروفایل$'), profile)
-application.add_handler(profile_handler)
+# اضافه کردن دستورات پروفایل و برداشت
+application.add_handler(MessageHandler(lambda message: message.text == "👤 پروفایل", show_profile))
+application.add_handler(MessageHandler(lambda message: message.text == "💸 برداشت", withdraw_funds))
 
-referral_link_handler = MessageHandler(filters.Regex('^🔗 لینک دعوت$'), referral_link)
-application.add_handler(referral_link_handler)
-
-earning_handler = MessageHandler(filters.Regex('^💰 درآمدزایی$'), earning)
-application.add_handler(earning_handler)
-
-withdraw_handler = MessageHandler(filters.Regex('^💸 برداشت$'), withdraw)
-application.add_handler(withdraw_handler)
-
-withdraw_conversation_handler = ConversationHandler(
-    entry_points=[MessageHandler(filters.Regex('^💸 برداشت$'), withdraw)],
-    states={WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, wallet_received)]},
-    fallbacks=[]
-)
-application.add_handler(withdraw_conversation_handler)
+# اضافه کردن هنده برای دریافت آدرس کیف پول
+application.add_handler(MessageHandler(lambda message: message.text.startswith("0x") or message.text.startswith("1") or message.text.startswith("3"), handle_wallet_address))
 
 # شروع ربات
 application.run_polling()
