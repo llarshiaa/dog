@@ -77,7 +77,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
 
     # نمایش کیبورد شیشه‌ای
-    keyboard = ReplyKeyboardMarkup([
+    keyboard = ReplyKeyboardMarkup([ 
         [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
         [KeyboardButton("💸 برداشت")]
     ], resize_keyboard=True)
@@ -172,7 +172,7 @@ application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و �
 # هندلر برای بخش برداشت
 withdrawal_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Text("💸 برداشت"), withdrawal_request)],
-    states={
+    states={ 
         WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, confirm_wallet)],
     },
     fallbacks=[]
