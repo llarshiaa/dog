@@ -57,6 +57,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ], resize_keyboard=True)
         await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
+
 # بررسی عضویت کاربر
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -104,6 +105,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.edit_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
     except Exception as e:
         await query.message.edit_text(f"⛔️ مشکلی پیش آمد: {e}")
+
 
 # نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
