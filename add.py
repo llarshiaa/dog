@@ -83,7 +83,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ], resize_keyboard=True)
     await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
-
 # بررسی عضویت با دکمه "عضو شدم"
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -94,7 +93,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
             # نمایش کیبورد شیشه‌ای
-            keyboard = ReplyKeyboardMarkup([
+            keyboard = ReplyKeyboardMarkup([ 
                 [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                 [KeyboardButton("💸 برداشت")]
             ], resize_keyboard=True)
@@ -103,7 +102,6 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raise Exception("Not a member")
     except:
         await query.answer("⛔️ هنوز عضو کانال نیستید! لطفاً ابتدا عضو شوید.", show_alert=True)
-
 
 # نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -120,7 +118,6 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     f"🔗 تعداد زیرمجموعه‌ها: {referrals}\n"
                                     f"💰 موجودی دوج‌کوین: {balance}")
 
-
 # ارسال لینک دعوت
 async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -129,7 +126,6 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invite_link = f"https://t.me/{context.bot.username}?start={user_id}"
     await update.message.reply_text(f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
                                     "هر کاربری که با این لینک وارد شود، 1 دوج‌کوین به موجودی شما اضافه می‌شود.")
-
 
 # درخواست برداشت
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -146,7 +142,6 @@ async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
     else:
         await update.message.reply_text(f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT} دوج‌کوین است.")
         return ConversationHandler.END
-
 
 # تأیید آدرس ولت برای برداشت
 async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -172,7 +167,7 @@ application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و �
 # هندلر برای بخش برداشت
 withdrawal_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Text("💸 برداشت"), withdrawal_request)],
-    states={ 
+    states={
         WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, confirm_wallet)],
     },
     fallbacks=[]
