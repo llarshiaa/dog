@@ -1,4 +1,3 @@
-جواد, [11/28/2024 1:30 AM]
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, ConversationHandler
 from telegram.ext import filters
@@ -89,7 +88,7 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
                                     "هر کاربری که با این لینک وارد شود، 1 دوج‌کوین به موجودی شما اضافه می‌شود.")
 
-جواد, [11/28/2024 1:30 AM]
+
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
