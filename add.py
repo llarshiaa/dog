@@ -84,8 +84,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید:", reply_markup=keyboard)
         return
 
-
-# نمایش کیبورد شیشه‌ای
+    # نمایش کیبورد شیشه‌ای
     keyboard = ReplyKeyboardMarkup([ 
         [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
         [KeyboardButton("💸 برداشت")]
@@ -99,7 +98,6 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # بررسی عضویت در کانال
     try:
-        # بررسی وضعیت عضویت کاربر در کانال
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
             # عضویت تأیید شد، نمایش کیبورد شیشه‌ای
@@ -108,9 +106,9 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [KeyboardButton("💸 برداشت")]
             ], resize_keyboard=True)
             await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.", reply_markup=keyboard)
-            
+
             # ارسال پیام تبریک به معرف
-            referrer_id = query.message.reply_to_message.text.split("start=")[-1]
+            referrer_id = query.message.text.split("start=")[-1]
             if referrer_id:
                 cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (int(referrer_id),))
                 ref_data = cursor.fetchone()
@@ -126,9 +124,8 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
         else:
             raise Exception("Not a member")
-    except Exception as e:
+    except:
         await query.answer("⛔️ هنوز عضو کانال نیستید!", show_alert=True)
-
 
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -190,15 +187,18 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
 application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
+application.add_handler(MessageHandler(filters.Text("💸 برداشت"), withdrawal_request))
 
-# هندلر درخواست برداشت
-withdrawal_conv_handler = ConversationHandler(
+# ساختن ConversationHandler برای درخواست برداشت
+withdrawal_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Text("💸 برداشت"), withdrawal_request)],
     states={
         WAITING_FOR_WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_wallet)],
     },
     fallbacks=[],
 )
-application.add_handler(withdrawal_conv_handler)
 
+application.add_handler(withdrawal_handler)
+
+# شروع ربات
 application.run_polling()
