@@ -16,7 +16,7 @@ conn = sqlite3.connect('database.db')
 # ایجاد یک cursor برای اجرای دستورات SQL
 cursor = conn.cursor()
 
-# ایجاد جدول کاربر در پایگاه داده اگر وجود نداشته باشد
+# ایجاد جدول در پایگاه داده
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 # اعمال تغییرات و بستن اتصال
 conn.commit()
+conn.close()
 
 # مراحل درخواست برداشت
 WAITING_FOR_WALLET = range(1)
@@ -35,12 +36,6 @@ WAITING_FOR_WALLET = range(1)
 # تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
-    query = update.message.text
-
-    # بررسی لینک دعوت
-    referrer_id = None
-    if context.args:
-        referrer_id = int(context.args[0])
 
     # ثبت کاربر در پایگاه داده
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
@@ -58,25 +53,18 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             conn.commit()
 
             # نمایش دکمه‌های شیشه‌ای برای لینک دعوت
-            if referrer_id:
-                keyboard = InlineKeyboardMarkup([
-                    [InlineKeyboardButton("عضویت", url=f"https://t.me/{CHANNEL_USERNAME}")],
-                    [InlineKeyboardButton("عضو شدم", callback_data=f"check_membership_{user_id}")]
-                ])
-                await update.message.reply_text("لطفاً یکی از گزینه‌ها را انتخاب کنید:\n\n"
-                                                "1. عضویت - برای عضویت در کانال\n"
-                                                "2. عضو شدم - برای تایید عضویت خود", reply_markup=keyboard)
-            else:
-                # اگر کاربر از لینک دعوت نیست، فقط خوش آمدگویی
-                keyboard = ReplyKeyboardMarkup([ 
-                    [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-                    [KeyboardButton("💸 برداشت")]
-                ], resize_keyboard=True)
-                await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
+            keyboard = ReplyKeyboardMarkup([
+                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
+                [KeyboardButton("💸 برداشت")]
+            ], resize_keyboard=True)
+            await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
         else:
             # اگر کاربر عضو نشده باشد
-            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}")]
+            ])
+            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.", reply_markup=keyboard)
             return
 
     except Exception as e:
@@ -134,27 +122,12 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     f"💰 برداشت شما به زودی انجام خواهد شد.", parse_mode="Markdown")
     return ConversationHandler.END
 
-# تابع برای بررسی عضویت
-async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.callback_query.from_user.id
-
-    # بررسی عضویت کاربر
-    cursor.execute("SELECT is_member FROM users WHERE user_id = ?", (user_id,))
-    user_data = cursor.fetchone()
-    if user_data and user_data[0] == 1:
-        await update.callback_query.answer("✅ شما عضو کانال هستید.")
-    else:
-        await update.callback_query.answer("⛔️ شما هنوز عضو کانال نشده‌اید.")
-
-    # بسته شدن پاسخ به کال‌بک
-    await update.callback_query.message.delete()
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
 
 # هندلرها
 application.add_handler(CommandHandler("start", start))
-application.add_handler(CallbackQueryHandler(check_membership, pattern=r"^check_membership_\d+$"))
 application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
 
