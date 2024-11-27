@@ -11,17 +11,17 @@ BONUS_FOR_20_REFERRALS = 5  # پاداش برای 20 زیرمجموعه
 MIN_WITHDRAWAL_AMOUNT = 10  # حداقل مقدار برای برداشت
 
 # اتصال به پایگاه داده
-conn = sqlite3.connect("bot.db")
-cursor = conn.cursor()
+# ایجاد جدول با فیلد جدید
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     referrals INTEGER DEFAULT 0,
     balance INTEGER DEFAULT 0,
-    is_member INTEGER DEFAULT 0   اضافه کردن فیلد برای وضعیت عضویت
+    is_member INTEGER DEFAULT 0
 )
 """)
 conn.commit()
+
 
 # مراحل درخواست برداشت
 WAITING_FOR_WALLET = range(1)
