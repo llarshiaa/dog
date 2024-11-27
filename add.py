@@ -25,6 +25,7 @@ conn.commit()
 # مراحل درخواست برداشت
 WAITING_FOR_WALLET = range(1)
 
+# شروع ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     referrer_id = None
@@ -38,37 +39,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
-
-        # اگر کاربر با لینک دعوت وارد شده
-        if referrer_id and referrer_id != user_id:
-            # بررسی عضویت زیرمجموعه در کانال
-            try:
-                member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
-                if member.status in ["member", "administrator", "creator"]:
-                    cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (referrer_id,))
-                    ref_data = cursor.fetchone()
-                    if ref_data:
-                        referrals = ref_data[0] + 1
-                        cursor.execute("UPDATE users SET referrals = ? WHERE user_id = ?", (referrals, referrer_id))
-                        cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
-                                       (REWARD_PER_REFERRAL, referrer_id))
-                        conn.commit()
-
-                        # ارسال پیام تبریک به معرف
-                        await context.bot.send_message(
-                            chat_id=referrer_id,
-                            text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
-                        )
-                        if referrals == 20:  # بررسی پاداش 20 زیرمجموعه
-                            cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
-                                           (BONUS_FOR_20_REFERRALS, referrer_id))
-                            conn.commit()
-                            await context.bot.send_message(
-                                chat_id=referrer_id,
-                                text="🎁 تبریک! شما به 20 زیرمجموعه رسیدید و 5 دوج‌کوین هدیه گرفتید."
-                            )
-            except:
-                pass  # اگر عضو کانال نبود، هیچ اتفاقی نمی‌افتد
 
     # بررسی عضویت در کانال
     try:
@@ -84,6 +54,30 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید:", reply_markup=keyboard)
         return
 
+    # اگر کاربر با لینک دعوت وارد شده
+    if referrer_id and referrer_id != user_id:
+        cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (referrer_id,))
+        ref_data = cursor.fetchone()
+        if ref_data:
+            referrals = ref_data[0] + 1
+            cursor.execute("UPDATE users SET referrals = ?, balance = balance + ? WHERE user_id = ?", 
+                           (referrals, REWARD_PER_REFERRAL, referrer_id))
+            conn.commit()
+
+            # ارسال پیام تبریک به معرف
+            await context.bot.send_message(
+                chat_id=referrer_id,
+                text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
+            )
+            if referrals % 20 == 0:  # بررسی پاداش برای هر 20 زیرمجموعه
+                cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
+                               (BONUS_FOR_20_REFERRALS, referrer_id))
+                conn.commit()
+                await context.bot.send_message(
+                    chat_id=referrer_id,
+                    text=f"🎁 تبریک! شما به {referrals} زیرمجموعه رسیدید و {BONUS_FOR_20_REFERRALS} دوج‌کوین هدیه گرفتید."
+                )
+
     # نمایش کیبورد شیشه‌ای
     keyboard = ReplyKeyboardMarkup([
         [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
@@ -92,6 +86,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
 
+# بررسی عضویت با دکمه "عضو شدم"
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -109,9 +104,10 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             raise Exception("Not a member")
     except:
-        await query.answer("⛔️ هنوز عضو کانال نیستید!", show_alert=True)
+        await query.answer("⛔️ هنوز عضو کانال نیستید! لطفاً ابتدا عضو شوید.", show_alert=True)
 
 
+# نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -127,6 +123,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     f"💰 موجودی دوج‌کوین: {balance}")
 
 
+# ارسال لینک دعوت
 async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -136,6 +133,7 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     "هر کاربری که با این لینک وارد شود، 1 دوج‌کوین به موجودی شما اضافه می‌شود.")
 
 
+# درخواست برداشت
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
 
@@ -152,6 +150,7 @@ async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
         return ConversationHandler.END
 
 
+# تأیید آدرس ولت برای برداشت
 async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     wallet_address = update.message.text
     user_id = update.effective_user.id
