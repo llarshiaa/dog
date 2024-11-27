@@ -47,10 +47,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raise Exception("Not a member")
     except:
         # درخواست عضویت
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("عضو شدم", callback_data="check_membership")]
-        ])
-        await update.message.reply_text("⛔️ هنوز عضو کانال نیستید! لطفاً ابتدا عضو شوید.", reply_markup=keyboard)
+        invite_link = f"https://t.me/{CHANNEL_USERNAME}"
+        await update.message.reply_text(f"⛔️ هنوز عضو کانال نیستید! لطفاً ابتدا عضو شوید.\n\n"
+                                        f"برای عضویت روی لینک زیر کلیک کنید:\n{invite_link}")
         return
 
     # اگر کاربر با لینک دعوت وارد شده
@@ -78,7 +77,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
 
     # نمایش کیبورد شیشه‌ای
-    keyboard = ReplyKeyboardMarkup([  
+    keyboard = ReplyKeyboardMarkup([
         [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
         [KeyboardButton("💸 برداشت")]
     ], resize_keyboard=True)
@@ -95,7 +94,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
             # نمایش کیبورد شیشه‌ای
-            keyboard = ReplyKeyboardMarkup([  
+            keyboard = ReplyKeyboardMarkup([
                 [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                 [KeyboardButton("💸 برداشت")]
             ], resize_keyboard=True)
