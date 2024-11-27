@@ -70,26 +70,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             except:
                 pass  # اگر عضو کانال نبود، هیچ اتفاقی نمی‌افتد
 
-    # بررسی عضویت در کانال
-    try:
-        member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
-        if member.status not in ["member", "administrator", "creator"]:
-            raise Exception("Not a member")
-    except:
-        # درخواست عضویت
-        keyboard = InlineKeyboardMarkup([[ 
-            InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}"),
-            InlineKeyboardButton("✅ عضو شدم", callback_data="check_membership")
-        ]])
-        await update.message.reply_text("⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید:", reply_markup=keyboard)
-        return
-
-    # نمایش کیبورد شیشه‌ای
-    keyboard = ReplyKeyboardMarkup([ 
-        [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-        [KeyboardButton("💸 برداشت")]
-    ], resize_keyboard=True)
-    await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
+    # نمایش گزینه‌های عضویت
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}")],
+        [InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")]
+    ])
+    await update.message.reply_text(
+        "⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید. پس از عضویت، لطفاً دکمه تایید عضویت را بزنید:",
+        reply_markup=keyboard
+    )
 
 
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -106,24 +95,8 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 [KeyboardButton("💸 برداشت")]
             ], resize_keyboard=True)
             await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.", reply_markup=keyboard)
-
-            # ارسال پیام تبریک به معرف
-            referrer_id = query.message.text.split("start=")[-1]
-            if referrer_id:
-                cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (int(referrer_id),))
-                ref_data = cursor.fetchone()
-                if ref_data:
-                    referrals = ref_data[0] + 1
-                    cursor.execute("UPDATE users SET referrals = ? WHERE user_id = ?", (referrals, int(referrer_id)))
-                    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
-                                   (REWARD_PER_REFERRAL, int(referrer_id)))
-                    conn.commit()
-                    await context.bot.send_message(
-                        chat_id=int(referrer_id),
-                        text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
-                    )
         else:
-            raise Exception("Not a member")
+            await query.answer("⛔️ هنوز عضو کانال نیستید!", show_alert=True)
     except:
         await query.answer("⛔️ هنوز عضو کانال نیستید!", show_alert=True)
 
@@ -202,3 +175,4 @@ application.add_handler(withdrawal_handler)
 
 # شروع ربات
 application.run_polling()
+
