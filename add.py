@@ -68,20 +68,25 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                                 "2. عضو شدم - برای تایید عضویت خود", reply_markup=keyboard)
             else:
                 # اگر کاربر از لینک دعوت نیست، فقط خوش آمدگویی
-                keyboard = ReplyKeyboardMarkup([
+                keyboard = ReplyKeyboardMarkup([ 
                     [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                     [KeyboardButton("💸 برداشت")]
                 ], resize_keyboard=True)
                 await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
         else:
-            # اگر کاربر عضو نشده باشد
-            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
+            # اگر کاربر عضو نشده باشد، ارسال پیام و دکمه‌های عضویت
+            keyboard = InlineKeyboardMarkup([
+                [InlineKeyboardButton("عضویت", url=f"https://t.me/{CHANNEL_USERNAME}")],
+                [InlineKeyboardButton("عضو شدم", callback_data=f"check_membership_{user_id}")]
+            ])
+            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.",
+                                            reply_markup=keyboard)
             return
 
     except Exception as e:
         # در صورت بروز هرگونه خطا
-        await update.message.reply_text(f"⛔️ مشکلی پیش آمد: {e}")
+        await update.message.reply_text(f"⛔️ مشکلی پیش آمد: {e}"))
 
 # نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
