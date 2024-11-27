@@ -27,8 +27,8 @@ WAITING_FOR_WALLET = range(1)
 
 # شروع ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    referrer_id = None
+    user_id = update.message.from_user.id
+    query = update.message.text
 
     # بررسی لینک دعوت
     if context.args:
@@ -58,59 +58,31 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
 
-# بررسی عضویت کاربر
-async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user_id = query.from_user.id
-
     # بررسی عضویت در کانال
     try:
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
+        
         if member.status in ["member", "administrator", "creator"]:
-            # اگر عضو شده باشد، تایید عضویت
-            await query.message.edit_text("✅ شما در کانال عضو شدید!")
-
-            # بررسی وضعیت در دیتابیس برای جلوگیری از دور زدن
+            # اگر عضو شده باشد، تایید عضویت و ارسال پیام خوش‌آمد
+            await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=main_menu_keyboard)
+            
+            # بررسی وضعیت عضویت در دیتابیس
             cursor.execute("SELECT is_member FROM users WHERE user_id = ?", (user_id,))
             result = cursor.fetchone()
             if result and result[0] == 1:
-                await query.message.edit_text("⛔️ شما قبلاً عضو شده‌اید.")
-                return  # اگر کاربر قبلاً عضو شده باشد، دیگر نمی‌تواند از این بخش استفاده کند.
-
-            # بروزرسانی وضعیت عضویت کاربر در دیتابیس
-            cursor.execute("UPDATE users SET is_member = 1 WHERE user_id = ?", (user_id,))
+                return  # اگر قبلاً عضو شده باشد، ادامه نده
+            # ذخیره وضعیت عضویت در دیتابیس
+            cursor.execute("INSERT INTO users (user_id, is_member) VALUES (?, 1)", (user_id,))
             conn.commit()
-
-            # ارسال پیام تبریک به فرد دعوت‌کننده
-            referrer_id = int(query.data.split("_")[1])  # گرفتن شناسه دعوت‌کننده
-            cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (referrer_id,))
-            ref_data = cursor.fetchone()
-            if ref_data:
-                referrals = ref_data[0] + 1
-                cursor.execute("UPDATE users SET referrals = ?, balance = balance + ? WHERE user_id = ?", 
-                               (referrals, REWARD_PER_REFERRAL, referrer_id))
-                conn.commit()
-
-                # ارسال پیام تبریک به معرف
-                await context.bot.send_message(
-                    chat_id=referrer_id,
-                    text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
-                )
-            
-            # نمایش کیبورد شیشه‌ای جدید برای کاربر
-            keyboard = ReplyKeyboardMarkup([ 
-                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-                [KeyboardButton("💸 برداشت")]
-            ], resize_keyboard=True)
-            await query.message.reply_text("✅ عضویت شما تایید شد. از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
         else:
             # اگر کاربر عضو نشده باشد
-            await query.message.edit_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
-            
-    except Exception as e:
-        await query.message.edit_text(f"⛔️ مشکلی پیش آمد: {e}")
+            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
+            return
 
+    except Exception as e:
+        # در صورت بروز هرگونه خطا
+        await update.message.reply_text(f"⛔️ مشکلی پیش آمد: {e}")
 
 # نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
