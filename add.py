@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     referrals INTEGER DEFAULT 0,
     balance INTEGER DEFAULT 0,
-    is_member INTEGER DEFAULT 0  # اضافه کردن فیلد برای وضعیت عضویت
+    is_member INTEGER DEFAULT 0   اضافه کردن فیلد برای وضعیت عضویت
 )
 """)
 conn.commit()
