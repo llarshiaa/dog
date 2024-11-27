@@ -47,23 +47,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raise Exception("Not a member")
     except:
         # درخواست عضویت
-       async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
-         query = update.callback_query
-         user_id = query.from_user.id
-
-    try:
-        member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
-        if member.status in ["member", "administrator", "creator"]:
-            keyboard = ReplyKeyboardMarkup([  # تغییر وضعیت کیبورد
-                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-                [KeyboardButton("💸 برداشت")]
-            ], resize_keyboard=True)
-            await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.", reply_markup=keyboard)
-        else:
-            await query.answer("⛔️ هنوز عضو کانال نیستید! لطفاً ابتدا عضو شوید.", show_alert=True)
-    except Exception as e:
-        await query.answer(f"⛔️ مشکلی پیش آمده: {str(e)}", show_alert=True)
-
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("عضو شدم", callback_data="check_membership")]
+        ])
+        await update.message.reply_text("⛔️ هنوز عضو کانال نیستید! لطفاً ابتدا عضو شوید.", reply_markup=keyboard)
+        return
 
     # اگر کاربر با لینک دعوت وارد شده
     if referrer_id and referrer_id != user_id:
@@ -90,7 +78,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
 
     # نمایش کیبورد شیشه‌ای
-    keyboard = ReplyKeyboardMarkup([
+    keyboard = ReplyKeyboardMarkup([  
         [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
         [KeyboardButton("💸 برداشت")]
     ], resize_keyboard=True)
@@ -107,7 +95,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
             # نمایش کیبورد شیشه‌ای
-            keyboard = ReplyKeyboardMarkup([
+            keyboard = ReplyKeyboardMarkup([  
                 [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                 [KeyboardButton("💸 برداشت")]
             ], resize_keyboard=True)
