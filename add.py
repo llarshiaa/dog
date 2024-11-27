@@ -67,7 +67,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                 chat_id=referrer_id,
                                 text="🎁 تبریک! شما به 20 زیرمجموعه رسیدید و 5 دوج‌کوین هدیه گرفتید."
                             )
-            except:
+            except Exception as e:
+                print(f"Error checking membership: {e}")  # نمایش خطا در صورت عدم عضویت
                 pass  # اگر عضو کانال نبود، هیچ اتفاقی نمی‌افتد
 
     # نمایش گزینه‌های عضویت
@@ -85,8 +86,8 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
 
-    # بررسی عضویت در کانال
     try:
+        # بررسی عضویت کاربر در کانال
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
             # عضویت تأیید شد، نمایش کیبورد شیشه‌ای
@@ -97,7 +98,8 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.", reply_markup=keyboard)
         else:
             await query.answer("⛔️ هنوز عضو کانال نیستید!", show_alert=True)
-    except:
+    except Exception as e:
+        print(f"Error checking membership: {e}")
         await query.answer("⛔️ هنوز عضو کانال نیستید!", show_alert=True)
 
 
