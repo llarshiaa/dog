@@ -48,8 +48,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except:
         # درخواست عضویت
        async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user_id = query.from_user.id
+         query = update.callback_query
+         user_id = query.from_user.id
 
     try:
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
