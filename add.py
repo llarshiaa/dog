@@ -10,7 +10,6 @@ CHANNEL_USERNAME = "tegaratnegar"  # نام کانال شما (بدون @)
 REWARD_PER_REFERRAL = 1  # پاداش به ازای هر زیرمجموعه
 BONUS_FOR_20_REFERRALS = 5  # پاداش برای 20 زیرمجموعه
 MIN_WITHDRAWAL_AMOUNT = 10  # حداقل مقدار برای برداشت
-DAILY_GIFT = 0.5  # هدیه روزانه به ازای هر کاربر
 
 # اتصال به پایگاه داده
 conn = sqlite3.connect("bot.db")
@@ -41,27 +40,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
-
-    # بررسی هدیه روزانه
-    today = datetime.now().date()
-    cursor.execute("SELECT last_active, balance FROM users WHERE user_id = ?", (user_id,))
-    user_data = cursor.fetchone()
-
-    if user_data:
-        last_active = user_data[0]
-        balance = user_data[1]
-
-        if last_active != today:
-            # افزودن هدیه روزانه
-            cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", (DAILY_GIFT, user_id))
-            cursor.execute("UPDATE users SET last_active = ? WHERE user_id = ?", (today, user_id))
-            conn.commit()
-            balance += DAILY_GIFT
-
-            # ارسال پیام به کاربر
-            await update.message.reply_text(f"🎉 شما امروز {DAILY_GIFT} دوج‌کوین هدیه گرفتید!\nموجودی شما: {balance} دوج‌کوین")
-        else:
-            await update.message.reply_text(f"⛔️ شما امروز قبلاً هدیه روزانه خود را دریافت کرده‌اید.\nموجودی شما: {balance} دوج‌کوین")
 
     # بررسی عضویت در کانال
     try:
