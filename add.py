@@ -27,7 +27,6 @@ WAITING_FOR_WALLET = range(1)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     referrer_id = None
-
     if context.args:
         referrer_id = int(context.args[0])
 
@@ -57,20 +56,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
-
     try:
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
-            await context.bot.send_message(user_id, "/start")
-            keyboard = ReplyKeyboardMarkup([
-                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-                [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")]
-            ], resize_keyboard=True)
-            await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.", reply_markup=keyboard)
+            invite_link = f"https://t.me/{context.bot.username}?start={user_id}"
+            keyboard = InlineKeyboardMarkup([[InlineKeyboardButton("✅ عضو شدم", url=invite_link)]])
+            await query.message.edit_text("✅ عضویت شما تأیید شد! حالا روی دکمه زیر کلیک کنید تا وارد ربات شوید.", reply_markup=keyboard)
         else:
             raise Exception("Not a member")
     except:
-        await query.answer("⛔️ هنوز عضو کانال نیستید!", show_alert=True)
+        pass
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -88,13 +83,13 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
                                     "هر کاربری که با این لینک وارد شود، 1 دوج‌کوین به موجودی شما اضافه می‌شود.")
 
-
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+
+
+user_id = update.effective_user.id
     cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
     user_data = cursor.fetchone()
     balance = user_data[0] if user_data else 0
-
     if balance >= MIN_WITHDRAWAL_AMOUNT:
         await update.message.reply_text("💼 لطفاً آدرس ولت دوج‌کوین خود را وارد کنید:")
         return WAITING_FOR_WALLET
@@ -114,7 +109,6 @@ async def daily_status(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     cursor.execute("SELECT referrals, balance, last_active FROM users WHERE user_id = ?", (user_id,))
     user_data = cursor.fetchone()
-
     if user_data:
         referrals = user_data[0]
         balance = user_data[1]
