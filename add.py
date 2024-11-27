@@ -70,8 +70,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}")],
         [InlineKeyboardButton("✅ تایید عضویت", callback_data="confirm_membership")],
-        [InlineKeyboardButton("👤 پروفایل", callback_data="profile")],
-        [InlineKeyboardButton("🔗 لینک دعوت", callback_data="referral_link")]
     ])
     await update.message.reply_text(
         "⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید. پس از عضویت، لطفاً دکمه تایید عضویت را بزنید:",
@@ -85,9 +83,18 @@ async def confirm_membership(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # ثبت و تایید عضویت
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     if cursor.fetchone():
+        # نمایش کیبورد شیشه‌ای بعد از تایید عضویت
+        keyboard = ReplyKeyboardMarkup([
+            [KeyboardButton("👤 پروفایل")],
+            [KeyboardButton("🔗 لینک دعوت")],
+            [KeyboardButton("💰 درآمدزایی")],
+            [KeyboardButton("💸 برداشت")],
+        ], resize_keyboard=True)
+
         await update.callback_query.answer("عضویت شما تایید شد. موفق باشید!")
         await update.callback_query.edit_message_text(
-            "✅ عضویت شما تایید شد! اکنون می‌توانید از ربات استفاده کنید."
+            "✅ عضویت شما تایید شد! اکنون می‌توانید از ربات استفاده کنید.",
+            reply_markup=keyboard
         )
     else:
         await update.callback_query.answer("شما ابتدا باید در کانال عضو شوید.")
@@ -98,7 +105,7 @@ async def confirm_membership(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.callback_query.from_user.id
+    user_id = update.message.from_user.id
     cursor.execute("SELECT referrals, balance FROM users WHERE user_id = ?", (user_id,))
     user_data = cursor.fetchone()
 
@@ -109,19 +116,29 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
                        f"👥 زیرمجموعه‌ها: {referrals}\n" \
                        f"🔗 لینک دعوت شما: https://t.me/{context.bot.username}?start={user_id}"
 
-        await update.callback_query.edit_message_text(profile_text)
+        await update.message.reply_text(profile_text)
     else:
-        await update.callback_query.answer("شما هنوز ثبت‌نام نکرده‌اید.")
+        await update.message.reply_text("شما هنوز ثبت‌نام نکرده‌اید.")
+
 
 async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.callback_query.from_user.id
+    user_id = update.message.from_user.id
     referral_link = f"https://t.me/{context.bot.username}?start={user_id}"
 
-    await update.callback_query.edit_message_text(f"🔗 لینک دعوت شما: {referral_link}")
+    await update.message.reply_text(f"🔗 لینک دعوت شما: {referral_link}")
+
+
+async def earning(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.message.from_user.id
+    cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (user_id,))
+    referrals = cursor.fetchone()[0]
+
+    earning_amount = referrals * REWARD_PER_REFERRAL
+    await update.message.reply_text(f"💰 درآمد شما تا کنون: {earning_amount} دوج‌کوین")
 
 
 async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+    user_id = update.message.from_user.id
     cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
     user_balance = cursor.fetchone()
     
@@ -133,7 +150,7 @@ async def withdraw(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return ConversationHandler.END
 
 async def wallet_received(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
+    user_id = update.message.from_user.id
     wallet_address = update.message.text
 
     cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
@@ -159,13 +176,17 @@ application.add_handler(start_handler)
 confirm_handler = CallbackQueryHandler(confirm_membership, pattern="^confirm_membership$")
 application.add_handler(confirm_handler)
 
-profile_handler = CallbackQueryHandler(profile, pattern="^profile$")
+# اضافه کردن بخش‌های پروفایل، لینک دعوت، درآمدزایی و برداشت
+profile_handler = MessageHandler(filters.Regex('^👤 پروفایل$'), profile)
 application.add_handler(profile_handler)
 
-referral_link_handler = CallbackQueryHandler(referral_link, pattern="^referral_link$")
+referral_link_handler = MessageHandler(filters.Regex('^🔗 لینک دعوت$'), referral_link)
 application.add_handler(referral_link_handler)
 
-withdraw_handler = CommandHandler("withdraw", withdraw)
+earning_handler = MessageHandler(filters.Regex('^💰 درآمدزایی$'), earning)
+application.add_handler(earning_handler)
+
+withdraw_handler = MessageHandler(filters.Regex('^💸 برداشت$'), withdraw)
 application.add_handler(withdraw_handler)
 
 wallet_received_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, wallet_received)
