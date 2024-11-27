@@ -40,50 +40,24 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
 
-    # بررسی عضویت در کانال
-    try:
-        member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
-        if member.status not in ["member", "administrator", "creator"]:
-            raise Exception("Not a member")
-    except:
-        # درخواست عضویت
-        invite_link = f"https://t.me/{CHANNEL_USERNAME}"
-        await update.message.reply_text(f"⛔️ هنوز عضو کانال نیستید! لطفاً ابتدا عضو شوید.\n\n"
-                                        f"برای عضویت روی لینک زیر کلیک کنید:\n{invite_link}")
-        return
+    # نمایش دکمه‌های شیشه‌ای برای لینک دعوت
+    if referrer_id:
+        keyboard = InlineKeyboardMarkup([
+            [InlineKeyboardButton("عضویت", url=f"https://t.me/{CHANNEL_USERNAME}")],
+            [InlineKeyboardButton("عضو شدم", callback_data=f"check_membership_{user_id}")]
+        ])
+        await update.message.reply_text("لطفاً یکی از گزینه‌ها را انتخاب کنید:\n\n"
+                                        "1. عضویت - برای عضویت در کانال\n"
+                                        "2. عضو شدم - برای تایید عضویت خود", reply_markup=keyboard)
+    else:
+        # اگر کاربر از لینک دعوت نیست، فقط خوش آمدگویی
+        keyboard = ReplyKeyboardMarkup([ 
+            [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
+            [KeyboardButton("💸 برداشت")]
+        ], resize_keyboard=True)
+        await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
-    # اگر کاربر با لینک دعوت وارد شده
-    if referrer_id and referrer_id != user_id:
-        cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (referrer_id,))
-        ref_data = cursor.fetchone()
-        if ref_data:
-            referrals = ref_data[0] + 1
-            cursor.execute("UPDATE users SET referrals = ?, balance = balance + ? WHERE user_id = ?", 
-                           (referrals, REWARD_PER_REFERRAL, referrer_id))
-            conn.commit()
-
-            # ارسال پیام تبریک به معرف
-            await context.bot.send_message(
-                chat_id=referrer_id,
-                text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
-            )
-            if referrals % 20 == 0:  # بررسی پاداش برای هر 20 زیرمجموعه
-                cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
-                               (BONUS_FOR_20_REFERRALS, referrer_id))
-                conn.commit()
-                await context.bot.send_message(
-                    chat_id=referrer_id,
-                    text=f"🎁 تبریک! شما به {referrals} زیرمجموعه رسیدید و {BONUS_FOR_20_REFERRALS} دوج‌کوین هدیه گرفتید."
-                )
-
-    # نمایش کیبورد شیشه‌ای
-    keyboard = ReplyKeyboardMarkup([ 
-        [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-        [KeyboardButton("💸 برداشت")]
-    ], resize_keyboard=True)
-    await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
-
-# بررسی عضویت با دکمه "عضو شدم"
+# بررسی عضویت کاربر
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -92,16 +66,37 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
-            # نمایش کیبورد شیشه‌ای
-            keyboard = ReplyKeyboardMarkup([ 
-                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-                [KeyboardButton("💸 برداشت")]
-            ], resize_keyboard=True)
-            await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.", reply_markup=keyboard)
+            # عضو شده است، تایید عضویت
+            await query.message.edit_text("✅ شما در کانال عضو شدید!")
+            
+            # ارسال پیام به فرد دعوت‌کننده
+            referrer_id = int(query.data.split("_")[1])  # گرفتن شناسه دعوت‌کننده
+            cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (referrer_id,))
+            ref_data = cursor.fetchone()
+            if ref_data:
+                referrals = ref_data[0] + 1
+                cursor.execute("UPDATE users SET referrals = ?, balance = balance + ? WHERE user_id = ?", 
+                               (referrals, REWARD_PER_REFERRAL, referrer_id))
+                conn.commit()
+
+                # ارسال پیام تبریک به معرف
+                await context.bot.send_message(
+                    chat_id=referrer_id,
+                    text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
+                )
+                if referrals % 20 == 0:  # بررسی پاداش برای هر 20 زیرمجموعه
+                    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
+                                   (BONUS_FOR_20_REFERRALS, referrer_id))
+                    conn.commit()
+                    await context.bot.send_message(
+                        chat_id=referrer_id,
+                        text=f"🎁 تبریک! شما به {referrals} زیرمجموعه رسیدید و {BONUS_FOR_20_REFERRALS} دوج‌کوین هدیه گرفتید."
+                    )
         else:
-            raise Exception("Not a member")
-    except:
-        await query.answer("⛔️ هنوز عضو کانال نیستید! لطفاً ابتدا عضو شوید.", show_alert=True)
+            # اگر عضو نشده باشد
+            await query.message.edit_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
+    except Exception as e:
+        await query.message.edit_text(f"⛔️ مشکلی پیش آمد: {e}")
 
 # نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -160,7 +155,7 @@ application = Application.builder().token(BOT_TOKEN).build()
 
 # هندلرها
 application.add_handler(CommandHandler("start", start))
-application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
+application.add_handler(CallbackQueryHandler(check_membership, pattern=r"^check_membership_\d+$"))
 application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
 
