@@ -35,6 +35,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
 
+        if referrer_id:
+            cursor.execute("SELECT referrals, balance FROM users WHERE user_id = ?", (referrer_id,))
+            referrer_data = cursor.fetchone()
+            if referrer_data:
+                referrals = referrer_data[0] + 1
+                balance = referrer_data[1] + REWARD_PER_REFERRAL
+                cursor.execute("UPDATE users SET referrals = ?, balance = ? WHERE user_id = ?", (referrals, balance, referrer_id))
+                conn.commit()
+
     try:
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status not in ["member", "administrator", "creator"]:
@@ -77,6 +86,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     f"🔗 تعداد زیرمجموعه‌ها: {referrals}\n"
                                     f"💰 موجودی دوج‌کوین: {balance}")
 
+
 async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     invite_link = f"https://t.me/{context.bot.username}?start={user_id}"
@@ -84,8 +94,6 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     "هر کاربری که با این لینک وارد شود، 1 دوج‌کوین به موجودی شما اضافه می‌شود.")
 
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-
-
     user_id = update.effective_user.id
     cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
     user_data = cursor.fetchone()
