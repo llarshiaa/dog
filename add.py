@@ -16,7 +16,7 @@ conn = sqlite3.connect('database.db')
 # ایجاد یک cursor برای اجرای دستورات SQL
 cursor = conn.cursor()
 
-# حالا می‌توانید دستور SQL را اجرا کنید
+# ایجاد جدول کاربر در پایگاه داده اگر وجود نداشته باشد
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -28,12 +28,11 @@ CREATE TABLE IF NOT EXISTS users (
 
 # اعمال تغییرات و بستن اتصال
 conn.commit()
-conn.close()
 
 # مراحل درخواست برداشت
 WAITING_FOR_WALLET = range(1)
 
-# شروع ربات
+# تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     query = update.message.text
@@ -76,13 +75,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
         else:
-            # اگر کاربر عضو نشده باشد، ارسال پیام و دکمه‌های عضویت
-            keyboard = InlineKeyboardMarkup([
-                [InlineKeyboardButton("عضویت", url=f"https://t.me/{CHANNEL_USERNAME}")],
-                [InlineKeyboardButton("عضو شدم", callback_data=f"check_membership_{user_id}")]
-            ])
-            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.",
-                                            reply_markup=keyboard)
+            # اگر کاربر عضو نشده باشد
+            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
             return
 
     except Exception as e:
@@ -140,6 +134,20 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     f"💰 برداشت شما به زودی انجام خواهد شد.", parse_mode="Markdown")
     return ConversationHandler.END
 
+# تابع برای بررسی عضویت
+async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.callback_query.from_user.id
+
+    # بررسی عضویت کاربر
+    cursor.execute("SELECT is_member FROM users WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+    if user_data and user_data[0] == 1:
+        await update.callback_query.answer("✅ شما عضو کانال هستید.")
+    else:
+        await update.callback_query.answer("⛔️ شما هنوز عضو کانال نشده‌اید.")
+
+    # بسته شدن پاسخ به کال‌بک
+    await update.callback_query.message.delete()
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
