@@ -68,7 +68,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if member.status in ["member", "administrator", "creator"]:
             # عضو شده است، تایید عضویت
             await query.message.edit_text("✅ شما در کانال عضو شدید!")
-            
+
             # ارسال پیام به فرد دعوت‌کننده
             referrer_id = int(query.data.split("_")[1])  # گرفتن شناسه دعوت‌کننده
             cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (referrer_id,))
@@ -92,6 +92,13 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         chat_id=referrer_id,
                         text=f"🎁 تبریک! شما به {referrals} زیرمجموعه رسیدید و {BONUS_FOR_20_REFERRALS} دوج‌کوین هدیه گرفتید."
                     )
+            
+            # نمایش کیبورد شیشه‌ای جدید
+            keyboard = ReplyKeyboardMarkup([ 
+                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
+                [KeyboardButton("💸 برداشت")]
+            ], resize_keyboard=True)
+            await query.message.reply_text("✅ عضویت شما تایید شد. از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
         else:
             # اگر عضو نشده باشد
             await query.message.edit_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
@@ -171,3 +178,4 @@ application.add_handler(withdrawal_handler)
 
 # اجرای ربات
 application.run_polling()
+
