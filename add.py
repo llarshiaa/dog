@@ -1,4 +1,3 @@
-Arshia, [11/27/2024 5:35 PM]
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, ConversationHandler
 from telegram.ext import filters
@@ -85,7 +84,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید:", reply_markup=keyboard)
         return
 
-Arshia, [11/27/2024 5:35 PM]
+
 # نمایش کیبورد شیشه‌ای
     keyboard = ReplyKeyboardMarkup([
         [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
