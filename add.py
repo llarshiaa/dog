@@ -10,8 +10,15 @@ REWARD_PER_REFERRAL = 1  # پاداش به ازای هر زیرمجموعه
 BONUS_FOR_20_REFERRALS = 5  # پاداش برای 20 زیرمجموعه
 MIN_WITHDRAWAL_AMOUNT = 10  # حداقل مقدار برای برداشت
 
+import sqlite3
+
 # اتصال به پایگاه داده
-# ایجاد جدول با فیلد جدید
+conn = sqlite3.connect('database.db')
+
+# ایجاد یک cursor برای اجرای دستورات SQL
+cursor = conn.cursor()
+
+# حالا می‌توانید دستور SQL را اجرا کنید
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -20,8 +27,10 @@ CREATE TABLE IF NOT EXISTS users (
     is_member INTEGER DEFAULT 0
 )
 """)
-conn.commit()
 
+# اعمال تغییرات و بستن اتصال
+conn.commit()
+conn.close()
 
 # مراحل درخواست برداشت
 WAITING_FOR_WALLET = range(1)
