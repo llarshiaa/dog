@@ -86,7 +86,7 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
-user_id = update.effective_user.id
+    user_id = update.effective_user.id
     cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
     user_data = cursor.fetchone()
     balance = user_data[0] if user_data else 0
