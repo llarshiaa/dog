@@ -99,9 +99,10 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # بررسی عضویت در کانال
     try:
+        # بررسی وضعیت عضویت کاربر در کانال
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
-            # نمایش کیبورد شیشه‌ای
+            # عضویت تأیید شد، نمایش کیبورد شیشه‌ای
             keyboard = ReplyKeyboardMarkup([ 
                 [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                 [KeyboardButton("💸 برداشت")]
@@ -125,8 +126,9 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
         else:
             raise Exception("Not a member")
-    except:
+    except Exception as e:
         await query.answer("⛔️ هنوز عضو کانال نیستید!", show_alert=True)
+
 
 
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
