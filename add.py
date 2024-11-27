@@ -77,7 +77,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             raise Exception("Not a member")
     except:
         # درخواست عضویت
-        keyboard = InlineKeyboardMarkup([[
+        keyboard = InlineKeyboardMarkup([[ 
             InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}"),
             InlineKeyboardButton("✅ عضو شدم", callback_data="check_membership")
         ]])
@@ -86,7 +86,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 # نمایش کیبورد شیشه‌ای
-    keyboard = ReplyKeyboardMarkup([
+    keyboard = ReplyKeyboardMarkup([ 
         [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
         [KeyboardButton("💸 برداشت")]
     ], resize_keyboard=True)
@@ -102,11 +102,27 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
             # نمایش کیبورد شیشه‌ای
-            keyboard = ReplyKeyboardMarkup([
+            keyboard = ReplyKeyboardMarkup([ 
                 [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                 [KeyboardButton("💸 برداشت")]
             ], resize_keyboard=True)
             await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.", reply_markup=keyboard)
+            
+            # ارسال پیام تبریک به معرف
+            referrer_id = query.message.reply_to_message.text.split("start=")[-1]
+            if referrer_id:
+                cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (int(referrer_id),))
+                ref_data = cursor.fetchone()
+                if ref_data:
+                    referrals = ref_data[0] + 1
+                    cursor.execute("UPDATE users SET referrals = ? WHERE user_id = ?", (referrals, int(referrer_id)))
+                    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
+                                   (REWARD_PER_REFERRAL, int(referrer_id)))
+                    conn.commit()
+                    await context.bot.send_message(
+                        chat_id=int(referrer_id),
+                        text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
+                    )
         else:
             raise Exception("Not a member")
     except:
@@ -173,15 +189,14 @@ application.add_handler(CallbackQueryHandler(check_membership, pattern="check_me
 application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
 
-# هندلر برای بخش برداشت
-withdrawal_handler = ConversationHandler(
+# هندلر درخواست برداشت
+withdrawal_conv_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Text("💸 برداشت"), withdrawal_request)],
     states={
-        WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, confirm_wallet)],
+        WAITING_FOR_WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_wallet)],
     },
-    fallbacks=[]
+    fallbacks=[],
 )
-application.add_handler(withdrawal_handler)
+application.add_handler(withdrawal_conv_handler)
 
-# اجرای ربات
 application.run_polling()
