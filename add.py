@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS users (
 
 # اعمال تغییرات و بستن اتصال
 conn.commit()
+conn.close()
 
 # مراحل درخواست برداشت
 WAITING_FOR_WALLET = range(1)
@@ -86,7 +87,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     except Exception as e:
         # در صورت بروز هرگونه خطا
-        await update.message.reply_text(f"⛔️ مشکلی پیش آمد: {e}"))
+        await update.message.reply_text(f"⛔️ مشکلی پیش آمد: {e}")
 
 # نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -139,19 +140,6 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     f"💰 برداشت شما به زودی انجام خواهد شد.", parse_mode="Markdown")
     return ConversationHandler.END
 
-# بررسی وضعیت عضویت کاربر
-async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = int(update.callback_query.data.split("_")[1])  # استخراج user_id از داده‌های callback
-    cursor.execute("SELECT is_member FROM users WHERE user_id = ?", (user_id,))
-    result = cursor.fetchone()
-    if result:
-        is_member = result[0]
-        if is_member == 1:
-            await update.callback_query.answer(text="شما عضو کانال هستید.")
-        else:
-            await update.callback_query.answer(text="شما هنوز در کانال عضو نشده‌اید.")
-    else:
-        await update.callback_query.answer(text="کاربری یافت نشد.")
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
