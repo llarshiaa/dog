@@ -2,7 +2,6 @@ from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKe
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, ConversationHandler
 from telegram.ext import filters
 import sqlite3
-import re
 
 # تنظیمات ربات
 BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
@@ -19,7 +18,7 @@ CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
     referrals INTEGER DEFAULT 0,
     balance INTEGER DEFAULT 0,
-    is_member INTEGER DEFAULT 0
+    is_member INTEGER DEFAULT 0  # اضافه کردن فیلد برای وضعیت عضویت
 )
 """)
 conn.commit()
@@ -43,40 +42,40 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
 
-    # نمایش دکمه‌های شیشه‌ای برای لینک دعوت
-    if referrer_id:
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("عضویت", url=f"https://t.me/{CHANNEL_USERNAME}")],
-            [InlineKeyboardButton("عضو شدم", callback_data=f"check_membership_{user_id}")]
-        ])
-        await update.message.reply_text("لطفاً یکی از گزینه‌ها را انتخاب کنید:\n\n"
-                                        "1. عضویت - برای عضویت در کانال\n"
-                                        "2. عضو شدم - برای تایید عضویت خود", reply_markup=keyboard)
-    else:
-        # اگر کاربر از لینک دعوت نیست، فقط خوش آمدگویی
-        keyboard = ReplyKeyboardMarkup([ 
-            [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-            [KeyboardButton("💸 برداشت")]
-        ], resize_keyboard=True)
-        await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
-
-# بررسی عضویت در کانال
-async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.callback_query.from_user.id
+    # بررسی عضویت در کانال
     try:
-        # بررسی عضویت کاربر در کانال
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
+
         if member.status in ["member", "administrator", "creator"]:
-            # اگر کاربر عضو باشد
-            await update.callback_query.answer("✅ شما عضو کانال هستید.")
-            # ذخیره وضعیت عضویت در دیتابیس
+            # اگر عضو شده باشد، تایید عضویت و ارسال پیام خوش‌آمد
             cursor.execute("UPDATE users SET is_member = 1 WHERE user_id = ?", (user_id,))
             conn.commit()
+
+            # نمایش دکمه‌های شیشه‌ای برای لینک دعوت
+            if referrer_id:
+                keyboard = InlineKeyboardMarkup([
+                    [InlineKeyboardButton("عضویت", url=f"https://t.me/{CHANNEL_USERNAME}")],
+                    [InlineKeyboardButton("عضو شدم", callback_data=f"check_membership_{user_id}")]
+                ])
+                await update.message.reply_text("لطفاً یکی از گزینه‌ها را انتخاب کنید:\n\n"
+                                                "1. عضویت - برای عضویت در کانال\n"
+                                                "2. عضو شدم - برای تایید عضویت خود", reply_markup=keyboard)
+            else:
+                # اگر کاربر از لینک دعوت نیست، فقط خوش آمدگویی
+                keyboard = ReplyKeyboardMarkup([ 
+                    [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
+                    [KeyboardButton("💸 برداشت")]
+                ], resize_keyboard=True)
+                await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
+
         else:
-            # اگر عضو نباشد
-            await update.callback_query.answer("⛔️ شما هنوز عضو کانال نشده‌اید.")
+            # اگر کاربر عضو نشده باشد
+            await update.message.reply_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
+            return
+
     except Exception as e:
-        await update.callback_query.answer(f"⛔️ مشکلی پیش آمد: {e}")
+        # در صورت بروز هرگونه خطا
+        await update.message.reply_text(f"⛔️ مشکلی پیش آمد: {e}")
 
 # نمایش پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -142,9 +141,7 @@ application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و �
 # هندلر برای بخش برداشت
 withdrawal_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Text("💸 برداشت"), withdrawal_request)],
-    states={
-        WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, confirm_wallet)],
-    },
+    states={WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, confirm_wallet)]},
     fallbacks=[]
 )
 application.add_handler(withdrawal_handler)
