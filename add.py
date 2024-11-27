@@ -83,6 +83,17 @@ async def confirm_membership(update: Update, context: ContextTypes.DEFAULT_TYPE)
     # ثبت و تایید عضویت
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     if cursor.fetchone():
+        # ارسال پیام تبریک به فرد دعوت‌کننده
+        referrer_id = None
+        if update.callback_query.data != "confirm_membership":
+            referrer_id = int(update.callback_query.data.split('_')[-1])
+        
+        if referrer_id:
+            await context.bot.send_message(
+                chat_id=referrer_id,
+                text=f"🎉 زیرمجموعه شما عضو شد! تبریک می‌گوییم!"
+            )
+
         # نمایش کیبورد شیشه‌ای بعد از تایید عضویت
         keyboard = ReplyKeyboardMarkup([
             [KeyboardButton("👤 پروفایل")],
@@ -189,8 +200,13 @@ application.add_handler(earning_handler)
 withdraw_handler = MessageHandler(filters.Regex('^💸 برداشت$'), withdraw)
 application.add_handler(withdraw_handler)
 
-wallet_received_handler = MessageHandler(filters.TEXT & ~filters.COMMAND, wallet_received)
-application.add_handler(wallet_received_handler)
+# مدیریت برداشت
+withdraw_conversation_handler = ConversationHandler(
+    entry_points=[MessageHandler(filters.Regex('^💸 برداشت$'), withdraw)],
+    states={WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, wallet_received)]},
+    fallbacks=[],
+)
+application.add_handler(withdraw_conversation_handler)
 
-# راه‌اندازی ربات
+# شروع ربات
 application.run_polling()
