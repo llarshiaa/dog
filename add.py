@@ -200,11 +200,10 @@ application.add_handler(earning_handler)
 withdraw_handler = MessageHandler(filters.Regex('^💸 برداشت$'), withdraw)
 application.add_handler(withdraw_handler)
 
-# مدیریت برداشت
 withdraw_conversation_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Regex('^💸 برداشت$'), withdraw)],
     states={WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, wallet_received)]},
-    fallbacks=[],
+    fallbacks=[]
 )
 application.add_handler(withdraw_conversation_handler)
 
