@@ -67,10 +67,21 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
-            # عضو شده است، تایید عضویت
+            # اگر عضو شده باشد، تایید عضویت
             await query.message.edit_text("✅ شما در کانال عضو شدید!")
 
-            # ارسال پیام به فرد دعوت‌کننده
+            # بررسی وضعیت در دیتابیس برای جلوگیری از دور زدن
+            cursor.execute("SELECT is_member FROM users WHERE user_id = ?", (user_id,))
+            result = cursor.fetchone()
+            if result and result[0] == 1:
+                await query.message.edit_text("⛔️ شما قبلاً عضو شده‌اید.")
+                return  # اگر کاربر قبلاً عضو شده باشد، دیگر نمی‌تواند از این بخش استفاده کند.
+
+            # بروزرسانی وضعیت عضویت کاربر در دیتابیس
+            cursor.execute("UPDATE users SET is_member = 1 WHERE user_id = ?", (user_id,))
+            conn.commit()
+
+            # ارسال پیام تبریک به فرد دعوت‌کننده
             referrer_id = int(query.data.split("_")[1])  # گرفتن شناسه دعوت‌کننده
             cursor.execute("SELECT referrals FROM users WHERE user_id = ?", (referrer_id,))
             ref_data = cursor.fetchone()
@@ -85,24 +96,18 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     chat_id=referrer_id,
                     text=f"🎉 زیرمجموعه جدید اضافه شد! موجودی شما: {REWARD_PER_REFERRAL} دوج‌کوین افزایش یافت."
                 )
-                if referrals % 20 == 0:  # بررسی پاداش برای هر 20 زیرمجموعه
-                    cursor.execute("UPDATE users SET balance = balance + ? WHERE user_id = ?", 
-                                   (BONUS_FOR_20_REFERRALS, referrer_id))
-                    conn.commit()
-                    await context.bot.send_message(
-                        chat_id=referrer_id,
-                        text=f"🎁 تبریک! شما به {referrals} زیرمجموعه رسیدید و {BONUS_FOR_20_REFERRALS} دوج‌کوین هدیه گرفتید."
-                    )
             
-            # نمایش کیبورد شیشه‌ای جدید
+            # نمایش کیبورد شیشه‌ای جدید برای کاربر
             keyboard = ReplyKeyboardMarkup([ 
                 [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                 [KeyboardButton("💸 برداشت")]
             ], resize_keyboard=True)
             await query.message.reply_text("✅ عضویت شما تایید شد. از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
+
         else:
-            # اگر عضو نشده باشد
+            # اگر کاربر عضو نشده باشد
             await query.message.edit_text("⛔️ شما هنوز در کانال عضو نشده‌اید. لطفاً ابتدا عضو شوید.")
+            
     except Exception as e:
         await query.message.edit_text(f"⛔️ مشکلی پیش آمد: {e}")
 
