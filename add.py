@@ -4,11 +4,11 @@ from telegram.ext import filters
 import sqlite3
 from datetime import datetime
 
+# تنظیمات عمومی ربات
 BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
 CHANNEL_USERNAME = "tegaratnegar"
 REWARD_PER_REFERRAL = 1
 REWARD_PER_REFERRAL_GOLD = 2  # پاداش لیگ طلایی
-BONUS_FOR_20_REFERRALS = 5
 MIN_WITHDRAWAL_AMOUNT = 10
 
 # تنظیم پایگاه داده
@@ -28,7 +28,8 @@ try:
 except sqlite3.Error as e:
     print(f"خطا در اتصال به پایگاه داده: {e}")
 
-WAITING_FOR_WALLET, SUPPORT_MESSAGE = range(1, 3)
+# وضعیت‌ها برای ConversationHandler
+WAITING_FOR_WALLET, SUPPORT_MESSAGE = range(2)
 
 # تابع ثبت دعوت و ارسال پیام تبریک
 async def register_referral(user_id, referrer_id):
@@ -65,7 +66,7 @@ async def register_referral(user_id, referrer_id):
         print(f"خطا در ثبت دعوت: {e}")
         return False
 
-# تابع شروع
+# تابع شروع ربات
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     referrer_id = None
@@ -82,11 +83,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
             conn.commit()
 
-            # ثبت دعوت در صورت نیاز
+            # ذخیره شناسه دعوت‌کننده
             if referrer_id and referrer_id != user_id:
-                member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
-                if member.status in ["member", "administrator", "creator"]:
-                    await register_referral(user_id, referrer_id)
+                context.user_data["referrer_id"] = referrer_id
 
         # بررسی عضویت در کانال
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
@@ -98,7 +97,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید:", reply_markup=keyboard)
         return
 
-    # منوی اصلی
+    # نمایش منوی اصلی
     keyboard = ReplyKeyboardMarkup([
         [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
         [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
@@ -106,21 +105,46 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ], resize_keyboard=True)
     await update.message.reply_text("✅ خوش آمدید! از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
 
-# بررسی عضویت
+# بررسی عضویت و ثبت دعوت
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
+    referrer_id = context.user_data.get("referrer_id")
+
     try:
         member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
         if member.status in ["member", "administrator", "creator"]:
             await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.")
+
+            # ثبت دعوت پس از تأیید عضویت
+            if referrer_id:
+                await register_referral(user_id, referrer_id)
+
+            # نمایش منوی اصلی
+            keyboard = ReplyKeyboardMarkup([
+                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
+                [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
+                [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
+            ], resize_keyboard=True)
+            await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
         else:
             await query.answer("⛔️ هنوز عضو کانال نشده‌اید!", show_alert=True)
     except Exception as e:
         print(f"خطا در بررسی عضویت: {e}")
         await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
 
-# پروفایل
+# ارسال لینک دعوت
+async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        user_id = update.effective_user.id
+        invite_link = f"https://t.me/{context.bot.username}?start={user_id}"
+        await update.message.reply_text(f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
+                                        "هر کاربری که با این لینک وارد شود، به موجودی شما اضافه خواهد شد.")
+    except Exception as e:
+        print(f"خطا در ایجاد لینک دعوت: {e}")
+        await update.message.reply_text("⛔️ خطایی رخ داده است.")
+
+# پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         user_id = update.effective_user.id
@@ -137,57 +161,6 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"خطا در نمایش پروفایل: {e}")
         await update.message.reply_text("⛔️ خطایی رخ داده است.")
-
-# لینک دعوت
-async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        user_id = update.effective_user.id
-        invite_link = f"https://t.me/{context.bot.username}?start={user_id}"
-        await update.message.reply_text(f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
-                                        "هر کاربری که با این لینک وارد شود، به موجودی شما اضافه خواهد شد.")
-    except Exception as e:
-        print(f"خطا در ایجاد لینک دعوت: {e}")
-        await update.message.reply_text("⛔️ خطایی رخ داده است.")
-
-# درخواست برداشت
-async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        user_id = update.effective_user.id
-        cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-        user_data = cursor.fetchone()
-        if user_data and user_data[0] >= MIN_WITHDRAWAL_AMOUNT:
-            await update.message.reply_text("💼 لطفاً آدرس ولت دوج‌کوین خود را وارد کنید:")
-            return WAITING_FOR_WALLET
-        else:
-            await update.message.reply_text(f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT} دوج‌کوین است.")
-            return ConversationHandler.END
-    except Exception as e:
-        print(f"خطا در درخواست برداشت: {e}")
-        await update.message.reply_text("⛔️ خطایی رخ داده است.")
-        return ConversationHandler.END
-
-# تایید برداشت
-async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        wallet_address = update.message.text
-        user_id = update.effective_user.id
-
-        cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-        balance = cursor.fetchone()[0]
-        if balance >= MIN_WITHDRAWAL_AMOUNT:
-            new_balance = balance - MIN_WITHDRAWAL_AMOUNT
-            cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
-            conn.commit()
-
-            await update.message.reply_text(f"✅ درخواست برداشت ثبت شد.\n"
-                                            f"آدرس ولت: {wallet_address}\n"
-                                            f"💰 برداشت شما به زودی انجام خواهد شد.")
-        else:
-            await update.message.reply_text("⛔️ موجودی کافی نیست.")
-    except Exception as e:
-        print(f"خطا در تایید برداشت: {e}")
-        await update.message.reply_text("⛔️ خطایی رخ داده است.")
-    return ConversationHandler.END
 
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -216,22 +189,19 @@ async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     "3️⃣ درخواست برداشت ثبت کنید.\n"
                                     "4️⃣ برای پشتیبانی پیام ارسال کنید.")
 
-# تنظیمات هندلرها
+# تنظیم هندلرها
 application = Application.builder().token(BOT_TOKEN).build()
 
 application.add_handler(CommandHandler("start", start))
 application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
-application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
-application.add_handler(MessageHandler(filters.Text("💸 برداشت"), withdrawal_request))
+application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), support))
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
 
 conv_handler = ConversationHandler(
-    entry_points=[MessageHandler(filters.Text("💸 برداشت"), withdrawal_request),
-                  MessageHandler(filters.Text("📞 پشتیبانی"), support)],
+    entry_points=[MessageHandler(filters.Text("📞 پشتیبانی"), support)],
     states={
-        WAITING_FOR_WALLET: [MessageHandler(filters.TEXT & ~filters.COMMAND, confirm_wallet)],
         SUPPORT_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, receive_support_message)],
     },
     fallbacks=[],
