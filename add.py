@@ -32,65 +32,33 @@ WAITING_FOR_WALLET, SUPPORT_MESSAGE = range(2)
 # تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    referrer_id = None
 
-    try:
-        # بررسی عضویت کاربر در کانال
-        member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
-        if member.status in ["member", "administrator", "creator"]:
-            # اگر عضو بود، کیبورد اصلی را نمایش بده
-            keyboard = ReplyKeyboardMarkup([
-                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-                [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
-                [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
-            ], resize_keyboard=True)
-            await update.message.reply_text("✅ به ربات خوش آمدید! از دکمه‌های زیر استفاده کنید.", reply_markup=keyboard)
-        else:
-            raise Exception("Not a member")
-    except:
-        # اگر عضو نبود، دکمه عضویت را نمایش بده
-        keyboard = InlineKeyboardMarkup([
-            [InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}")],
-            [InlineKeyboardButton("✅ عضو شدم", callback_data="check_membership")]
-        ])
-        await update.message.reply_text(
-            "⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید:",
-            reply_markup=keyboard
-        )
+    # بررسی اگر لینک دعوت استفاده شده باشد
+    if context.args:
+        try:
+            referrer_id = int(context.args[0])
+        except ValueError:
+            referrer_id = None
 
-# تابع برای اطمینان از ثبت اطلاعات اولیه کاربر
-def ensure_user_exists(user_id):
-    conn = sqlite3.connect('bot_database.db')  # اتصال به دیتابیس
-    cursor = conn.cursor()
-
-    # بررسی وجود کاربر در دیتابیس
+    # ثبت کاربر جدید در پایگاه داده
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-    user = cursor.fetchone()
-
-    # اگر کاربر وجود نداشت، اطلاعات پیش‌فرض اضافه شود
-    if not user:
-        cursor.execute("INSERT INTO users (user_id, balance, invites) VALUES (?, ?, ?)", 
-                       (user_id, 0, 0))
+    if not cursor.fetchone():
+        cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
-    
-    conn.close()
 
-# تابع برای نمایش پروفایل کاربر
-def show_profile(user_id):
-    conn = sqlite3.connect('bot_database.db')  # اتصال به دیتابیس
-    cursor = conn.cursor()
+        # ذخیره `referrer_id`
+        if referrer_id and referrer_id != user_id:
+            context.user_data["referrer_id"] = referrer_id
 
-    # فراخوانی تابع اطمینان از وجود کاربر
-    ensure_user_exists(user_id)
-
-    # دریافت اطلاعات کاربر
-    cursor.execute("SELECT balance, invites FROM users WHERE user_id = ?", (user_id,))
-    user_data = cursor.fetchone()
-    conn.close()
-
-    # نمایش اطلاعات
-    balance, invites = user_data
-    return f"👤 پروفایل شما:\n💰 موجودی: {balance}\n👥 تعداد دعوت‌ها: {invites}"
-
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}")],
+        [InlineKeyboardButton("✅ عضو شدم", callback_data="check_membership")]
+    ])
+    await update.message.reply_text(
+        "⛔️ برای استفاده از ربات ابتدا باید عضو کانال زیر شوید:",
+        reply_markup=keyboard
+    )
 
 # بررسی عضویت و ثبت دعوت
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -179,10 +147,10 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # راهنما
 async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❓ راهنمای استفاده از ربات:\n\n"
-                                    "1️⃣از لینک دعوت برای درآمدزایی هر دعوت 1عدد دوج استفاده کنید.\n"
-                                    "2️⃣  پروفایل خود را برای دیدن موجودی بررسی کنید.\n"
-                                    "3️⃣ درخواست برداشت بعد 10 عدد قابل ثبت است.\n"
-                                    "4️⃣ برای پشتیبانی فقط پیام  ارسال کنید بررسی میشود.")
+                                    "1️⃣ از لینک دعوت برای درآمدزایی استفاده کنید.\n"
+                                    "2️⃣ پروفایل خود را بررسی کنید.\n"
+                                    "3️⃣ درخواست برداشت ثبت کنید.\n"
+                                    "4️⃣ برای پشتیبانی پیام ارسال کنید.")
 
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
