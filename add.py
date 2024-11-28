@@ -146,6 +146,36 @@ async def daily_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
 
+# تابع مدیریت درخواست برداشت
+async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+    if user_data and user_data[0] >= MIN_WITHDRAWAL_AMOUNT:
+        await update.message.reply_text("💼 لطفاً آدرس ولت دوج‌کوین خود را وارد کنید:")
+        return WAITING_FOR_WALLET
+    else:
+        await update.message.reply_text(f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT} دوج‌کوین است.")
+        return ConversationHandler.END
+
+# تابع برای تأیید آدرس ولت
+async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    wallet_address = update.message.text
+    user_id = update.effective_user.id
+    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+    balance = cursor.fetchone()[0]
+    if balance >= MIN_WITHDRAWAL_AMOUNT:
+        new_balance = balance - MIN_WITHDRAWAL_AMOUNT
+        cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
+        conn.commit()
+        await update.message.reply_text(f"✅ درخواست برداشت ثبت شد.\n"
+                                        f"آدرس ولت: {wallet_address}\n"
+                                        f"💰 برداشت شما به زودی انجام خواهد شد.")
+    else:
+        await update.message.reply_text("⛔️ موجودی کافی نیست.")
+    return ConversationHandler.END
+
+
 # درخواست لینک دعوت
 async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id  # شناسه کاربر
