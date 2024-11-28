@@ -127,7 +127,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         referrals, balance, league = user_data
         await update.message.reply_text(f"👤 پروفایل شما:\n\n"
                                         f"🔗 تعداد زیرمجموعه‌ها: {referrals}\n"
-                                        f"💰 موجودی دوج‌کوین: {balance} دوج‌کوین\n"
+                                        f"💰 موجودی دوج‌کوین: {balance}\n"
                                         f"🏆 سطح: {league}")
     else:
         await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
@@ -145,6 +145,14 @@ async def daily_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         f"🏆 سطح: {league}")
     else:
         await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
+
+# راهنما
+async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("❓ راهنمای استفاده از ربات:\n\n"
+                                    "1️⃣ از لینک دعوت برای درآمدزایی استفاده کنید.\n"
+                                    "2️⃣ پروفایل خود را بررسی کنید.\n"
+                                    "3️⃣ درخواست برداشت ثبت کنید.\n"
+                                    "4️⃣ برای پشتیبانی پیام ارسال کنید.")
 
 # درخواست برداشت
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -175,14 +183,6 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ موجودی کافی نیست.")
     return ConversationHandler.END
 
-# راهنما
-async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❓ راهنمای استفاده از ربات:\n\n"
-                                    "1️⃣ از لینک دعوت برای درآمدزایی استفاده کنید.\n"
-                                    "2️⃣ پروفایل خود را بررسی کنید.\n"
-                                    "3️⃣ درخواست برداشت ثبت کنید.\n"
-                                    "4️⃣ برای پشتیبانی پیام ارسال کنید.")
-
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✉️ لطفاً پیام خود را ارسال کنید.")
@@ -193,52 +193,44 @@ async def receive_support_message(update: Update, context: ContextTypes.DEFAULT_
     user_id = update.effective_user.id
     try:
         await application.bot.send_message(
-            chat_id="YOUR_ADMIN_ID",  # شناسه مدیر خود را جایگزین کنید
-             text=f"📩 پیام جدید از کاربر {user_id}:\n\n{user_message}"
+            chat_id="8031568534",  # شناسه مدیر
+            text=f"📩 پیام جدید از کاربر {user_id}:\n\n{user_message}"
         )
-        await update.message.reply_text("✅ پیام شما با موفقیت ثبت شد. پشتیبانی به زودی پاسخ شما را خواهد داد.")
+        await update.message.reply_text("✅ پیام شما با موفقیت ثبت شد.")
     except Exception as e:
         print(f"خطا در ارسال پیام پشتیبانی: {e}")
-        await update.message.reply_text("⛔️ متأسفانه خطایی رخ داد. لطفاً دوباره تلاش کنید.")
+        await update.message.reply_text("⛔️ خطایی رخ داد.")
     return ConversationHandler.END
 
-# پایان پشتیبانی
 async def cancel_support(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❌ فرآیند ارسال پیام به پشتیبانی لغو شد.")
+    await update.message.reply_text("❌ فرآیند ارسال پیام لغو شد.")
     return ConversationHandler.END
 
-# تنظیمات اصلی ربات
+# تنظیمات اصلی
 application = Application.builder().token(BOT_TOKEN).build()
 
-# هندلرهای اصلی
+# افزودن هندلرها
 application.add_handler(CommandHandler("start", start))
-application.add_handler(CommandHandler("profile", profile))
-application.add_handler(CommandHandler("help", help_section))
-application.add_handler(CommandHandler("daily_report", daily_report))
+application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), profile))
+application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
+application.add_handler(MessageHandler(filters.Text("📊 گزارش وضعیت روز"), daily_report))
+application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
 application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
 
-# هندلر درخواست برداشت
 withdrawal_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Text("💸 برداشت"), withdrawal_request)],
-    states={
-        WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, confirm_wallet)],
-    },
+    states={WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, confirm_wallet)]},
     fallbacks=[]
 )
 application.add_handler(withdrawal_handler)
 
-# هندلر پشتیبانی
 support_handler = ConversationHandler(
     entry_points=[MessageHandler(filters.Text("📞 پشتیبانی"), support)],
-    states={
-        SUPPORT_MESSAGE: [MessageHandler(filters.TEXT, receive_support_message)],
-    },
+    states={SUPPORT_MESSAGE: [MessageHandler(filters.TEXT, receive_support_message)]},
     fallbacks=[CommandHandler("cancel", cancel_support)],
 )
 application.add_handler(support_handler)
 
-# اجرای ربات
 if __name__ == "__main__":
-    print("🚀 ربات با موفقیت اجرا شد.")
+    print("🚀 ربات اجرا شد.")
     application.run_polling()
-          
