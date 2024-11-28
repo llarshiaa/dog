@@ -146,6 +146,11 @@ async def daily_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
 
+async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📞 برای پشتیبانی پیام خود را ارسال کنید. مدیران به زودی پاسخ خواهند داد."
+    )
+
 # تابع مدیریت درخواست برداشت
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
