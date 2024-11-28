@@ -3,7 +3,6 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 from telegram.ext import filters
 import sqlite3
 
-# تنظیمات عمومی ربات
 BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
 CHANNEL_USERNAME = "tegaratnegar"
 REWARD_PER_REFERRAL = 1
@@ -26,41 +25,7 @@ try:
 except sqlite3.Error as e:
     print(f"خطا در اتصال به پایگاه داده: {e}")
 
-# وضعیت‌ها برای ConversationHandler
 WAITING_FOR_WALLET, SUPPORT_MESSAGE = range(2)
-
-# ثبت دعوت و ارسال پیام تبریک
-async def register_referral(user_id, referrer_id):
-    try:
-        cursor.execute("SELECT referrals, balance, league FROM users WHERE user_id = ?", (referrer_id,))
-        referrer_data = cursor.fetchone()
-        if not referrer_data:
-            return False
-
-        referrals, balance, league = referrer_data
-        referrals += 1
-        reward = REWARD_PER_REFERRAL_GOLD if league == 'طلایی' else REWARD_PER_REFERRAL
-        balance += reward
-
-        if referrals >= 10 and league != 'طلایی':
-            league = 'طلایی'
-
-        cursor.execute(
-            "UPDATE users SET referrals = ?, balance = ?, league = ? WHERE user_id = ?",
-            (referrals, balance, league, referrer_id)
-        )
-        conn.commit()
-
-        await application.bot.send_message(
-            chat_id=referrer_id,
-            text=f"🎉 تبریک! یک زیرمجموعه جدید به لیست شما اضافه شد.\n"
-                 f"🔗 تعداد زیرمجموعه‌های شما: {referrals}\n"
-                 f"💰 موجودی شما: {balance} دوج‌کوین"
-        )
-        return True
-    except Exception as e:
-        print(f"خطا در ثبت دعوت: {e}")
-        return False
 
 # تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -72,6 +37,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             referrer_id = int(context.args[0])
         except ValueError:
             referrer_id = None
+
+    # ثبت کاربر جدید در پایگاه داده
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    if not cursor.fetchone():
+        cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
+        conn.commit()
 
     if referrer_id and referrer_id != user_id:
         context.user_data["referrer_id"] = referrer_id
@@ -85,39 +56,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=keyboard
     )
 
-# بررسی عضویت و ثبت دعوت
-async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    user_id = query.from_user.id
-    referrer_id = context.user_data.get("referrer_id")
-
-    try:
-        member = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME}", user_id=user_id)
-        if member.status in ["member", "administrator", "creator"]:
-            await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.")
-
-            if referrer_id:
-                await register_referral(user_id, referrer_id)
-
-            keyboard = ReplyKeyboardMarkup([
-                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-                [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
-                [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
-            ], resize_keyboard=True)
-            await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
-        else:
-            await query.answer("⛔️ هنوز عضو کانال نشده‌اید!", show_alert=True)
-    except Exception as e:
-        print(f"خطا در بررسی عضویت: {e}")
-        await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
-
-# ارسال لینک دعوت اختصاصی
-async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    invite_link = f"https://t.me/{context.bot.username}?start={user_id}"
-    await update.message.reply_text(f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
-                                    "هر کاربری که با این لینک وارد شود، به موجودی شما اضافه خواهد شد.")
-
 # پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -130,9 +68,9 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         f"💰 موجودی دوج‌کوین: {balance} دوج‌کوین\n"
                                         f"🏆 سطح: {league}")
     else:
-        await update.message.reply_text("⛔️ اطلاعاتی یافت نشد.")
+        await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
 
-# گزارش وضعیت روز
+# گزارش وضعیت روزانه
 async def daily_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     cursor.execute("SELECT referrals, balance, league FROM users WHERE user_id = ?", (user_id,))
@@ -144,7 +82,8 @@ async def daily_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                         f"💰 موجودی: {balance} دوج‌کوین\n"
                                         f"🏆 سطح: {league}")
     else:
-        await update.message.reply_text("⛔️ اطلاعاتی یافت نشد.")
+        await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
+
 
 # درخواست برداشت
 async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
