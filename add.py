@@ -214,7 +214,7 @@ application.add_handler(MessageHandler(filters.Text("📊 گزارش وضعیت 
 application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), support))
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
 application.add_handler(MessageHandler(filters.Text("💸 برداشت"), withdrawal_request))
-
+application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
 
 if __name__ == "__main__":
     print("🚀 ربات اجرا شد.")
