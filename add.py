@@ -42,12 +42,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             referrer_id = None
 
     # ثبت کاربر جدید در پایگاه داده
-cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
 
-  # ذخیره `referrer_id`
+        # ذخیره `referrer_id`
         if referrer_id and referrer_id != user_id:
             context.user_data["referrer_id"] = referrer_id
 
@@ -71,7 +71,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if member.status in ["member", "administrator", "creator"]:
             await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.")
 
-  # ثبت زیرمجموعه
+            # ثبت زیرمجموعه
             if referrer_id:
                 await register_referral(user_id, referrer_id)
 
@@ -88,6 +88,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"خطا در بررسی عضویت: {e}")
         await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
 
+# ثبت زیرمجموعه
 async def register_referral(user_id, referrer_id):
     cursor.execute("SELECT referrals, balance FROM users WHERE user_id = ?", (referrer_id,))
     referrer_data = cursor.fetchone()
@@ -103,7 +104,6 @@ async def register_referral(user_id, referrer_id):
                  f"🔗 تعداد زیرمجموعه‌ها: {referrals}\n"
                  f"💰 موجودی: {balance} دوج‌کوین"
         )
-
 
 # پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -133,6 +133,26 @@ async def daily_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
 
+# درخواست لینک دعوت
+async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    bot_username = context.bot.username
+
+    invite_link = f"https://t.me/{bot_username}?start={user_id}"
+    await update.message.reply_text(
+        f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
+        "هر کاربری که با این لینک عضو شود، به موجودی شما دوج‌کوین اضافه می‌شود!"
+    )
+
+# راهنما
+async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("❓ راهنمای استفاده از ربات:\n\n"
+                                    "1️⃣ از لینک دعوت برای درآمدزایی استفاده کنید.\n"
+                                    "2️⃣ پروفایل خود را بررسی کنید.\n"
+                                    "3️⃣ درخواست برداشت ثبت کنید.\n"
+                                    "4️⃣ برای پشتیبانی پیام ارسال کنید.")
+
+# پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📞 برای پشتیبانی پیام خود را ارسال کنید. مدیران به زودی پاسخ خواهند داد."
@@ -166,29 +186,6 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⛔️ موجودی کافی نیست.")
     return ConversationHandler.END
-
-
-# درخواست لینک دعوت
-async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id  # شناسه کاربر
-    bot_username = context.bot.username  # نام کاربری ربات
-
-    # تولید لینک دعوت
-    invite_link = f"https://t.me/{bot_username}?start={user_id}"
-
-    # ارسال لینک به کاربر
-    await update.message.reply_text(
-        f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
-        "هر کاربری که با این لینک عضو شود، به موجودی شما دوج‌کوین اضافه می‌شود!"
-    )
-
-# راهنما
-async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❓ راهنمای استفاده از ربات:\n\n"
-                                    "1️⃣ از لینک دعوت برای درآمدزایی استفاده کنید.\n"
-                                    "2️⃣برای دیدن موجودی پروفایل خود را بررسی کنید.\n"
-                                    "3️⃣ درخواست برداشت خود را بعد از رسیدن به دوج ثبت کنید.\n"
-                                    "4️⃣ برای پشتیبانی پیام ارسال کنید فقط.")
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
