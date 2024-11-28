@@ -35,7 +35,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     referrer_id = None
 
     # بررسی اگر لینک دعوت استفاده شده باشد
-      if context.args:
+    if context.args:
         try:
             referrer_id = int(context.args[0])
         except ValueError:
