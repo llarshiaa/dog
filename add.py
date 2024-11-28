@@ -206,8 +206,8 @@ application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
 application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("📊 گزارش وضعیت روز"), daily_report))
+application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), support))
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
-application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), help_section))
 application.add_handler(MessageHandler(filters.Text("💸 برداشت"), withdrawal_request))
 
 
