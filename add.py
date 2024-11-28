@@ -42,7 +42,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             referrer_id = None
 
     # ثبت کاربر جدید در پایگاه داده
- cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
