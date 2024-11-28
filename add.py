@@ -178,7 +178,8 @@ application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), prof
 application.add_handler(MessageHandler(filters.Text("📊 گزارش وضعیت روز"), daily_report))
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
 application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), help_section))
-application.add_handler(MessageHandler(filters.Text("💸 برداشت"), withdrawl))
+application.add_handler(MessageHandler(filters.Text("💸 برداشت"), withdrawal_request))
+
 
 if __name__ == "__main__":
     print("🚀 ربات اجرا شد.")
