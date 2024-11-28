@@ -146,6 +146,20 @@ async def daily_report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
 
+# درخواست لینک دعوت
+async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id  # شناسه کاربر
+    bot_username = context.bot.username  # نام کاربری ربات
+
+    # تولید لینک دعوت
+    invite_link = f"https://t.me/{bot_username}?start={user_id}"
+
+    # ارسال لینک به کاربر
+    await update.message.reply_text(
+        f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
+        "هر کاربری که با این لینک عضو شود، به موجودی شما دوج‌کوین اضافه می‌شود!"
+    )
+
 # راهنما
 async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❓ راهنمای استفاده از ربات:\n\n"
@@ -154,82 +168,15 @@ async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     "3️⃣ درخواست برداشت ثبت کنید.\n"
                                     "4️⃣ برای پشتیبانی پیام ارسال کنید.")
 
-# درخواست برداشت
-async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-    user_data = cursor.fetchone()
-    if user_data and user_data[0] >= MIN_WITHDRAWAL_AMOUNT:
-        await update.message.reply_text("💼 لطفاً آدرس ولت دوج‌کوین خود را وارد کنید:")
-        return WAITING_FOR_WALLET
-    else:
-        await update.message.reply_text(f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT} دوج‌کوین است.")
-        return ConversationHandler.END
-
-# تأیید برداشت
-async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    wallet_address = update.message.text
-    user_id = update.effective_user.id
-    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-    balance = cursor.fetchone()[0]
-    if balance >= MIN_WITHDRAWAL_AMOUNT:
-        new_balance = balance - MIN_WITHDRAWAL_AMOUNT
-        cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
-        conn.commit()
-        await update.message.reply_text(f"✅ درخواست برداشت ثبت شد.\n"
-                                        f"آدرس ولت: {wallet_address}\n"
-                                        f"💰 برداشت شما به زودی انجام خواهد شد.")
-    else:
-        await update.message.reply_text("⛔️ موجودی کافی نیست.")
-    return ConversationHandler.END
-
-# پشتیبانی
-async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✉️ لطفاً پیام خود را ارسال کنید.")
-    return SUPPORT_MESSAGE
-
-async def receive_support_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_message = update.message.text
-    user_id = update.effective_user.id
-    try:
-        await application.bot.send_message(
-            chat_id="8031568534",  # شناسه مدیر
-            text=f"📩 پیام جدید از کاربر {user_id}:\n\n{user_message}"
-        )
-        await update.message.reply_text("✅ پیام شما با موفقیت ثبت شد.")
-    except Exception as e:
-        print(f"خطا در ارسال پیام پشتیبانی: {e}")
-        await update.message.reply_text("⛔️ خطایی رخ داد.")
-    return ConversationHandler.END
-
-async def cancel_support(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❌ فرآیند ارسال پیام لغو شد.")
-    return ConversationHandler.END
-
-# تنظیمات اصلی
+# تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
 
 # افزودن هندلرها
 application.add_handler(CommandHandler("start", start))
-application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), profile))
+application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
 application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("📊 گزارش وضعیت روز"), daily_report))
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
-application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
-
-withdrawal_handler = ConversationHandler(
-    entry_points=[MessageHandler(filters.Text("💸 برداشت"), withdrawal_request)],
-    states={WAITING_FOR_WALLET: [MessageHandler(filters.TEXT, confirm_wallet)]},
-    fallbacks=[]
-)
-application.add_handler(withdrawal_handler)
-
-support_handler = ConversationHandler(
-    entry_points=[MessageHandler(filters.Text("📞 پشتیبانی"), support)],
-    states={SUPPORT_MESSAGE: [MessageHandler(filters.TEXT, receive_support_message)]},
-    fallbacks=[CommandHandler("cancel", cancel_support)],
-)
-application.add_handler(support_handler)
 
 if __name__ == "__main__":
     print("🚀 ربات اجرا شد.")
