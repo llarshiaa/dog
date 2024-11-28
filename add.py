@@ -164,9 +164,9 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❓ راهنمای استفاده از ربات:\n\n"
                                     "1️⃣ از لینک دعوت برای درآمدزایی استفاده کنید.\n"
-                                    "2️⃣ پروفایل خود را بررسی کنید.\n"
-                                    "3️⃣ درخواست برداشت ثبت کنید.\n"
-                                    "4️⃣ برای پشتیبانی پیام ارسال کنید.")
+                                    "2️⃣برای دیدن موجودی پروفایل خود را بررسی کنید.\n"
+                                    "3️⃣ درخواست برداشت خود را بعد از رسیدن به دوج ثبت کنید.\n"
+                                    "4️⃣ برای پشتیبانی پیام ارسال کنید فقط.")
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
@@ -177,6 +177,8 @@ application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و �
 application.add_handler(MessageHandler(filters.Text("👤 پروفایل"), profile))
 application.add_handler(MessageHandler(filters.Text("📊 گزارش وضعیت روز"), daily_report))
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
+application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), help_section))
+application.add_handler(MessageHandler(filters.Text("💸 برداشت"), withdrawl))
 
 if __name__ == "__main__":
     print("🚀 ربات اجرا شد.")
