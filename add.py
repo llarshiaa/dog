@@ -35,20 +35,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     referrer_id = None
 
     # بررسی اگر لینک دعوت استفاده شده باشد
-    if context.args:
+      if context.args:
         try:
             referrer_id = int(context.args[0])
         except ValueError:
             referrer_id = None
 
     # ثبت کاربر جدید در پایگاه داده
-    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+ cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
 
-    if referrer_id and referrer_id != user_id:
-        context.user_data["referrer_id"] = referrer_id
+  # ذخیره `referrer_id`
+        if referrer_id and referrer_id != user_id:
+            context.user_data["referrer_id"] = referrer_id
 
     keyboard = InlineKeyboardMarkup([
         [InlineKeyboardButton("📢 عضویت در کانال", url=f"https://t.me/{CHANNEL_USERNAME}")],
@@ -70,9 +71,11 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if member.status in ["member", "administrator", "creator"]:
             await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.")
 
+  # ثبت زیرمجموعه
             if referrer_id:
                 await register_referral(user_id, referrer_id)
 
+            # نمایش کیبورد شیشه‌ای
             keyboard = ReplyKeyboardMarkup([
                 [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                 [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
@@ -85,38 +88,22 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         print(f"خطا در بررسی عضویت: {e}")
         await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
 
-# ثبت دعوت و ارسال پیام تبریک
 async def register_referral(user_id, referrer_id):
-    try:
-        cursor.execute("SELECT referrals, balance, league FROM users WHERE user_id = ?", (referrer_id,))
-        referrer_data = cursor.fetchone()
-        if not referrer_data:
-            return False
-
-        referrals, balance, league = referrer_data
+    cursor.execute("SELECT referrals, balance FROM users WHERE user_id = ?", (referrer_id,))
+    referrer_data = cursor.fetchone()
+    if referrer_data:
+        referrals, balance = referrer_data
         referrals += 1
-        reward = REWARD_PER_REFERRAL_GOLD if league == 'طلایی' else REWARD_PER_REFERRAL
-        balance += reward
-
-        if referrals >= 10 and league != 'طلایی':
-            league = 'طلایی'
-
-        cursor.execute(
-            "UPDATE users SET referrals = ?, balance = ?, league = ? WHERE user_id = ?",
-            (referrals, balance, league, referrer_id)
-        )
+        balance += REWARD_PER_REFERRAL
+        cursor.execute("UPDATE users SET referrals = ?, balance = ? WHERE user_id = ?", (referrals, balance, referrer_id))
         conn.commit()
-
         await application.bot.send_message(
             chat_id=referrer_id,
-            text=f"🎉 تبریک! یک زیرمجموعه جدید به لیست شما اضافه شد.\n"
-                 f"🔗 تعداد زیرمجموعه‌های شما: {referrals}\n"
-                 f"💰 موجودی شما: {balance} دوج‌کوین"
+            text=f"🎉 یک زیرمجموعه جدید اضافه شد!\n"
+                 f"🔗 تعداد زیرمجموعه‌ها: {referrals}\n"
+                 f"💰 موجودی: {balance} دوج‌کوین"
         )
-        return True
-    except Exception as e:
-        print(f"خطا در ثبت دعوت: {e}")
-        return False
+
 
 # پروفایل کاربر
 async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
