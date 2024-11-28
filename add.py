@@ -5,7 +5,7 @@ import sqlite3
 from datetime import datetime
 
 BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
-CHANNEL_USERNAME = "YOUR_CHANNEL_USERNAME"
+CHANNEL_USERNAME = "tegaratnegar"
 REWARD_PER_REFERRAL = 1
 REWARD_PER_REFERRAL_GOLD = 2  # پاداش لیگ طلایی
 BONUS_FOR_20_REFERRALS = 5
