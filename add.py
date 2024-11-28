@@ -3,7 +3,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Mess
 from telegram.ext import filters
 import sqlite3
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
 CHANNEL_USERNAME = "tegaratnegar"
 REWARD_PER_REFERRAL = 1
 MIN_WITHDRAWAL_AMOUNT = 10
