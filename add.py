@@ -57,6 +57,41 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=keyboard
         )
 
+# تابع برای اطمینان از ثبت اطلاعات اولیه کاربر
+def ensure_user_exists(user_id):
+    conn = sqlite3.connect('bot_database.db')  # اتصال به دیتابیس
+    cursor = conn.cursor()
+
+    # بررسی وجود کاربر در دیتابیس
+    cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    # اگر کاربر وجود نداشت، اطلاعات پیش‌فرض اضافه شود
+    if not user:
+        cursor.execute("INSERT INTO users (user_id, balance, invites) VALUES (?, ?, ?)", 
+                       (user_id, 0, 0))
+        conn.commit()
+    
+    conn.close()
+
+# تابع برای نمایش پروفایل کاربر
+def show_profile(user_id):
+    conn = sqlite3.connect('bot_database.db')  # اتصال به دیتابیس
+    cursor = conn.cursor()
+
+    # فراخوانی تابع اطمینان از وجود کاربر
+    ensure_user_exists(user_id)
+
+    # دریافت اطلاعات کاربر
+    cursor.execute("SELECT balance, invites FROM users WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+    conn.close()
+
+    # نمایش اطلاعات
+    balance, invites = user_data
+    return f"👤 پروفایل شما:\n💰 موجودی: {balance}\n👥 تعداد دعوت‌ها: {invites}"
+
+
 # بررسی عضویت و ثبت دعوت
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
