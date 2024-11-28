@@ -4,7 +4,7 @@ from telegram.ext import filters
 import sqlite3
 from datetime import datetime
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
+BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
 CHANNEL_USERNAME = "YOUR_CHANNEL_USERNAME"
 REWARD_PER_REFERRAL = 1
 REWARD_PER_REFERRAL_GOLD = 2  # پاداش لیگ طلایی
