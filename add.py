@@ -6,7 +6,7 @@ import sqlite3
 # تنظیمات عمومی
 BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
 CHANNEL_USERNAME_1 = "tegaratnegar"  # کانال اول
-CHANNEL_USERNAME_2 = "signal_crypto_shahan"     # کانال دوم
+CHANNEL_USERNAME_2 = "dollor_ir"     # کانال دوم
 REWARD_PER_REFERRAL = 1
 MIN_WITHDRAWAL_AMOUNT = 10
 WAITING_FOR_WALLET = range(1)  # وضعیت انتظار آدرس ولت
