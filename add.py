@@ -151,19 +151,24 @@ async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
 async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     wallet_address = update.message.text
     user_id = update.effective_user.id
+
     cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-    balance = cursor.fetchone()[0]
+    result = cursor.fetchone()
+    balance = result[0] if result else 0
 
     if balance >= MIN_WITHDRAWAL_AMOUNT:
         new_balance = balance - MIN_WITHDRAWAL_AMOUNT
         cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
         conn.commit()
+
         await update.message.reply_text(f"✅ درخواست برداشت ثبت شد.\n"
                                         f"آدرس ولت: {wallet_address}\n"
                                         f"💰 موجودی فعلی: {new_balance} دوج‌کوین.")
+        return ConversationHandler.END
     else:
         await update.message.reply_text("⛔️ موجودی کافی نیست.")
-    return ConversationHandler.END
+        return ConversationHandler.END
+
 
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
