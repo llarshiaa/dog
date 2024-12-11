@@ -10,7 +10,7 @@ CHANNEL_USERNAME_2 = "dollor_ir"     # کانال دوم
 REWARD_PER_REFERRAL = 1
 MIN_WITHDRAWAL_AMOUNT = 10
 WAITING_FOR_WALLET = range(1)  # وضعیت انتظار آدرس ولت
-ADMIN_IDS = [5102021224]  # شناسه تلگرام ادمین‌ها
+ADMIN_IDS = [5102021224, 6827108476]  # شناسه تلگرام ادمین‌ها
 
 # اتصال به پایگاه داده
 try:
