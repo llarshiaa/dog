@@ -82,7 +82,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # بررسی عضویت در هر دو کانال
-# بررسی عضویت در هر دو کانال
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -117,7 +116,8 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
 
         # اضافه کردن دکمه ادمین
-        if user_id in ADMIN_IDS:
+        for admin in ADMIN_IDS:
+        if user_id in admin:
             buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
             buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
             buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
