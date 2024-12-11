@@ -233,7 +233,6 @@ async def ask_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRM_SEND
 
 # تایید و ارسال پیام
-# تایید و ارسال پیام
 async def confirm_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     message = context.user_data.get("broadcast_message", None)
@@ -353,10 +352,9 @@ async def add_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("✅ همه لینک‌ها ذخیره شدند.")
         return ConversationHandler.END
 
-async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
+async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚫 عملیات لغو شد.")
     return ConversationHandler.END
-
 
 # مشاهده لینک‌ها
 async def view_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
