@@ -353,11 +353,6 @@ async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
     return ConversationHandler.END
 
-def get_join_links():
-    cursor.execute("SELECT link FROM join_links")
-    links = cursor.fetchall()
-    return [link[0] for link in links]
-
 # مشاهده لینک‌ها
 async def view_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -450,7 +445,7 @@ conv_handler = ConversationHandler(
 )
 application.add_handler(conv_handler)
 
-    if __name__ == "__main__":  # اصلاح فاصله‌گذاری
+    if __name__ == "__main__":
     print("🚀 ربات اجرا شد.")
     application.run_polling()
 
