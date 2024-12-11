@@ -86,7 +86,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # بررسی عضویت در هر دو کانال
-# بررسی عضویت در هر دو کانال
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -486,6 +485,28 @@ async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYP
     await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
     return ConversationHandler.END
 
+# تعریف تابع نمایش آمار
+async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    # بررسی اینکه آیا کاربر ادمین است
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
+        return
+
+    try:
+        # شمارش تعداد کاربران
+        cursor.execute("SELECT COUNT(*) FROM users")
+        user_count = cursor.fetchone()[0]
+
+        # ارسال آمار به ادمین
+        await update.message.reply_text(
+            f"📊 آمار ربات:\n\n👥 تعداد کاربران ثبت‌شده: {user_count} نفر"
+        )
+    except Exception as e:
+        print(f"خطا در دریافت آمار: {e}")
+        await update.message.reply_text("❌ خطایی در دریافت آمار رخ داد.")
+        
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
 
