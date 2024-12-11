@@ -39,7 +39,6 @@ try:
 except sqlite3.Error as e:
     print(f"خطا در ایجاد جدول لینک‌ها: {e}")
 
-# تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     referrer_id = None
@@ -60,6 +59,21 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # ذخیره referrer_id
         if referrer_id and referrer_id != user_id:
             context.user_data["referrer_id"] = referrer_id
+
+    # اگر کاربر ادمین باشد
+    if user_id in ADMIN_IDS:
+        buttons = [
+            [InlineKeyboardButton("⚙️ تنظیم لینک‌ها", callback_data="admin_set_links")],
+            [InlineKeyboardButton("🔗 مشاهده لینک‌ها", callback_data="admin_view_links")],
+            [InlineKeyboardButton("🗑 حذف لینک‌ها", callback_data="admin_delete_links")],
+            [InlineKeyboardButton("📊 بخش آمار", callback_data="admin_stats")],
+        ]
+        keyboard = InlineKeyboardMarkup(buttons)
+        await update.message.reply_text(
+            "✅ شما به عنوان ادمین وارد شدید. از دکمه‌های زیر برای مدیریت استفاده کنید:",
+            reply_markup=keyboard
+        )
+        return
 
     # دریافت لینک‌های عضویت
     join_links = get_join_links()
@@ -121,6 +135,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
             buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
             buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
+
 
         reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
         await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=reply_markup)
