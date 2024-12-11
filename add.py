@@ -342,6 +342,33 @@ def get_join_links():
     links = cursor.fetchall()
     return [link[0] for link in links]
 
+# مشاهده لینک‌ها
+async def view_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
+        return
+
+    links = get_join_links()  # فراخوانی تابع برای دریافت لینک‌ها
+    if links:
+        links_text = "\n".join([f"🔗 {link}" for link in links])
+        await update.message.reply_text(f"📃 لینک‌های ثبت‌شده:\n\n{links_text}")
+    else:
+        await update.message.reply_text("⛔️ هیچ لینکی ثبت نشده است.")
+
+# حذف لینک‌ها
+async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
+        return
+
+    cursor.execute("DELETE FROM join_links")
+    conn.commit()
+    await update.message.reply_text("✅ تمام لینک‌ها حذف شدند.")
+
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
 
@@ -391,6 +418,8 @@ application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), su
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
 application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
 application.add_handler(MessageHandler(filters.Text("📊 بخش آمار") & filters.User(ADMIN_IDS), show_stats))
+application.add_handler(MessageHandler(filters.Text("🔗 مشاهده لینک‌ها") & filters.User(ADMIN_IDS), view_links))
+application.add_handler(MessageHandler(filters.Text("🗑 حذف لینک‌ها") & filters.User(ADMIN_IDS), delete_links))
 
 # هندلر مکالمه
 conv_handler = ConversationHandler(
