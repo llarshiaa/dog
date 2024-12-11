@@ -73,7 +73,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton(f"📢 عضویت در کانال {i + 1}", url=link)] for i, link in enumerate(join_links)
     ]
     keyboard_buttons.append([InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")])
-
     keyboard = InlineKeyboardMarkup(keyboard_buttons)
 
     await update.message.reply_text(
