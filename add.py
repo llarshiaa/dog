@@ -71,19 +71,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("✅ از دکمه‌های زیر استفاده کنید:", reply_markup=reply_markup)
 
     # بررسی لینک‌های عضویت
-    join_links = get_join_links()
+    join_links = get_join_links()  # دریافت لینک‌ها از جدول
     if join_links:
-        # اگر لینک‌ها تنظیم شده باشند، محدودیت عضویت فعال می‌شود
-        keyboard_buttons = [
-            [InlineKeyboardButton(f"📢 عضویت در کانال {i + 1}", url=link)] for i, link in enumerate(join_links)
-        ]
-        keyboard_buttons.append([InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")])
+    keyboard_buttons = [
+        [InlineKeyboardButton(f"📢 عضویت در کانال {i + 1}", url=link)] for i, link in enumerate(join_links)
+    ]
+    keyboard_buttons.append([InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")])
 
-        keyboard = InlineKeyboardMarkup(keyboard_buttons)
-        await update.message.reply_text(
-            "⛔️ برای استفاده از امکانات پیشرفته ربات ابتدا باید عضو کانال‌های زیر شوید:",
-            reply_markup=keyboard
-        )
+    keyboard = InlineKeyboardMarkup(keyboard_buttons)
+    await update.message.reply_text(
+        "⛔️ برای استفاده از امکانات پیشرفته ربات ابتدا باید عضو کانال‌های زیر شوید:",
+        reply_markup=keyboard
+    )
+
 
 # بررسی عضویت
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -96,15 +96,20 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     for link in join_links:
+        # استخراج یوزرنیم کانال از لینک
         channel_username = link.split("/")[-1]
-        member = await context.bot.get_chat_member(chat_id=f"@{channel_username}", user_id=user_id)
-        if member.status not in ["member", "administrator", "creator"]:
-            await query.answer("⛔️ لطفاً ابتدا عضو کانال‌ها شوید.", show_alert=True)
+        try:
+            member = await context.bot.get_chat_member(chat_id=f"@{channel_username}", user_id=user_id)
+            if member.status not in ["member", "administrator", "creator"]:
+                await query.answer("⛔️ لطفاً ابتدا عضو کانال‌ها شوید.", show_alert=True)
+                return
+        except Exception as e:
+            print(f"خطا در بررسی عضویت: {e}")
+            await query.answer("⛔️ مشکلی در بررسی عضویت وجود دارد.", show_alert=True)
             return
 
     await query.message.edit_text("✅ عضویت شما تأیید شد!")
-    if referrer_id := context.user_data.get("referrer_id"):
-        await register_referral(user_id, referrer_id)
+
 
 # مدیریت لینک‌ها توسط ادمین
 async def manage_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -176,6 +181,10 @@ async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT} دوج‌کوین است.")
         return ConversationHandler.END
 
+    if not context.user_data.get("is_verified"):
+        await update.message.reply_text("⛔️ لطفاً ابتدا عضویت خود را تأیید کنید.")
+        return
+
 # تایید آدرس ولت
 async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     wallet_address = update.message.text
@@ -201,6 +210,10 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📞 برای پشتیبانی پیام خود را ارسال کنید. مدیران به زودی پاسخ خواهند داد.")
+
+    if not context.user_data.get("is_verified"):
+        await update.message.reply_text("⛔️ لطفاً ابتدا عضویت خود را تأیید کنید.")
+        return
 
 # راهنما
 async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -308,6 +321,18 @@ async def set_link_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # ذخیره تعداد لینک‌ها در کانتکست
         context.user_data["link_count"] = link_count
         context.user_data["current_count"] = 0
+
+        # حذف لینک‌های قبلی
+        cursor.execute("DELETE FROM join_links")
+        conn.commit()
+
+        await update.message.reply_text(
+            f"✅ تعداد {link_count} لینک تنظیم خواهد شد. حالا لینک اول را ارسال کنید."
+        )
+        return ADD_LINKS
+    except ValueError:
+        await update.message.reply_text("⛔️ لطفاً یک عدد معتبر وارد کنید.")
+        return SET_LINK_COUNT
 
 
 # حذف لینک‌های قبلی
