@@ -395,6 +395,45 @@ def get_join_links():
 def is_admin(user_id):
     return user_id in ADMIN_IDS
 
+async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    wallet_address = update.message.text
+    user_id = update.effective_user.id
+    user_name = update.effective_user.username or "نام کاربری موجود نیست"
+    user_full_name = update.effective_user.full_name or "نام کامل موجود نیست"
+
+    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
+    result = cursor.fetchone()
+    balance = result[0] if result else 0
+
+    if balance >= MIN_WITHDRAWAL_AMOUNT:
+        new_balance = balance - MIN_WITHDRAWAL_AMOUNT
+        cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
+        conn.commit()
+
+        # پیام تایید برای کاربر
+        await update.message.reply_text(f"✅ درخواست برداشت ثبت شد.\n"
+                                        f"آدرس ولت: {wallet_address}\n"
+                                        f"💰 موجودی فعلی: {new_balance:.2f} تون‌کوین.")
+
+        # ارسال پیام به ادمین‌ها
+        for admin_id in ADMIN_IDS:
+            try:
+                await context.bot.send_message(
+                    chat_id=admin_id,
+                    text=f"🔔 درخواست برداشت جدید:\n\n"
+                         f"👤 کاربر: {user_full_name} (@{user_name})\n"
+                         f"🆔 شناسه: {user_id}\n"
+                         f"💰 مبلغ: {MIN_WITHDRAWAL_AMOUNT:.2f} تون‌کوین\n"
+                         f"🏦 آدرس ولت: {wallet_address}"
+                )
+            except Exception as e:
+                print(f"خطا در ارسال پیام به ادمین {admin_id}: {e}")
+
+        return ConversationHandler.END
+    else:
+        await update.message.reply_text("⛔️ موجودی کافی نیست.")
+        return ConversationHandler.END
+
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
 
