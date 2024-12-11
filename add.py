@@ -17,115 +17,108 @@ try:
     conn = sqlite3.connect("bot.db", check_same_thread=False)
     cursor = conn.cursor()
     cursor.execute("""
-    CREATE TABLE IF NOT EXISTS users (
-        user_id INTEGER PRIMARY KEY,
-        referrals INTEGER DEFAULT 0,
-        balance INTEGER DEFAULT 0,
-        league TEXT DEFAULT 'عادی'
-    )
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            referrals INTEGER DEFAULT 0,
+            balance INTEGER DEFAULT 0,
+            league TEXT DEFAULT 'عادی'
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS join_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            link TEXT NOT NULL
+        )
     """)
     conn.commit()
 except sqlite3.Error as e:
     print(f"خطا در اتصال به پایگاه داده: {e}")
-
-try:
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS join_links (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        link TEXT NOT NULL
-    )
-    """)
-    conn.commit()
-except sqlite3.Error as e:
-    print(f"خطا در ایجاد جدول لینک‌ها: {e}")
 
 # تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     referrer_id = None
 
-    # بررسی اگر لینک دعوت استفاده شده باشد
+    # بررسی لینک دعوت
     if context.args:
         try:
             referrer_id = int(context.args[0])
         except ValueError:
-            referrer_id = None
+            pass
 
-    # ثبت کاربر جدید در پایگاه داده
+    # ثبت کاربر جدید
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
     if not cursor.fetchone():
         cursor.execute("INSERT INTO users (user_id) VALUES (?)", (user_id,))
         conn.commit()
 
-        # ذخیره referrer_id
         if referrer_id and referrer_id != user_id:
             context.user_data["referrer_id"] = referrer_id
 
-    # دریافت لینک‌های عضویت
-    join_links = get_join_links()
-
-    if not join_links:  # اگر لینک‌ها خالی باشد
-        await update.message.reply_text("⛔️ لینک‌های عضویت تنظیم نشده‌اند. لطفاً با ادمین تماس بگیرید.")
-        return
-
-    # ایجاد دکمه‌های عضویت
-    keyboard_buttons = [
-        [InlineKeyboardButton(f"📢 عضویت در کانال {i + 1}", url=link)] for i, link in enumerate(join_links)
+    # ایجاد دکمه‌ها
+    buttons = [
+        [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
+        [KeyboardButton("💸 برداشت"), KeyboardButton("📞 پشتیبانی")],
+        [KeyboardButton("❓ راهنما")]
     ]
-    keyboard_buttons.append([InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")])
-    keyboard = InlineKeyboardMarkup(keyboard_buttons)
 
-    await update.message.reply_text(
-        "⛔️ برای استفاده از ربات ابتدا باید عضو کانال‌های زیر شوید:",
-        reply_markup=keyboard
-    )
+    if user_id in ADMIN_IDS:
+        buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
+        buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
+        buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
 
-# بررسی عضویت در هر دو کانال
+    reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+    await update.message.reply_text("✅ از دکمه‌های زیر استفاده کنید:", reply_markup=reply_markup)
+
+    # بررسی لینک‌های عضویت
+    join_links = get_join_links()
+    if join_links:
+        # اگر لینک‌ها تنظیم شده باشند، محدودیت عضویت فعال می‌شود
+        keyboard_buttons = [
+            [InlineKeyboardButton(f"📢 عضویت در کانال {i + 1}", url=link)] for i, link in enumerate(join_links)
+        ]
+        keyboard_buttons.append([InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")])
+
+        keyboard = InlineKeyboardMarkup(keyboard_buttons)
+        await update.message.reply_text(
+            "⛔️ برای استفاده از امکانات پیشرفته ربات ابتدا باید عضو کانال‌های زیر شوید:",
+            reply_markup=keyboard
+        )
+
+# بررسی عضویت
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
-    referrer_id = context.user_data.get("referrer_id")
 
     join_links = get_join_links()
-
     if not join_links:
         await query.answer("⛔️ لینک‌های عضویت تنظیم نشده‌اند!", show_alert=True)
         return
 
-    try:
-        # بررسی عضویت در همه کانال‌ها
-        for link in join_links:
-            channel_username = link.split("/")[-1]
-            member = await context.bot.get_chat_member(chat_id=f"@{channel_username}", user_id=user_id)
-            if member.status not in ["member", "administrator", "creator"]:
-                await query.answer("⛔️ لطفاً ابتدا عضو همه کانال‌ها شوید!", show_alert=True)
-                return
+    for link in join_links:
+        channel_username = link.split("/")[-1]
+        member = await context.bot.get_chat_member(chat_id=f"@{channel_username}", user_id=user_id)
+        if member.status not in ["member", "administrator", "creator"]:
+            await query.answer("⛔️ لطفاً ابتدا عضو کانال‌ها شوید.", show_alert=True)
+            return
 
-        await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.")
+    await query.message.edit_text("✅ عضویت شما تأیید شد!")
+    if referrer_id := context.user_data.get("referrer_id"):
+        await register_referral(user_id, referrer_id)
 
-        # ثبت زیرمجموعه
-        if referrer_id:
-            await register_referral(user_id, referrer_id)
+# مدیریت لینک‌ها توسط ادمین
+async def manage_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
+        return
 
-        # نمایش کیبورد اصلی
-        buttons = [
-            [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-            [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
-            [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
-        ]
-
-# اضافه کردن دکمه ادمین
-        if user_id in ADMIN_IDS:
-            buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
-            buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
-            buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
-
-        reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-        await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=reply_markup)
-
-    except Exception as e:
-        print(f"خطا در بررسی عضویت: {e}")
-        await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
+    links = get_join_links()
+    if links:
+        links_text = "\n".join([f"🔗 {link}" for link in links])
+        await update.message.reply_text(f"📃 لینک‌های تنظیم‌شده:\n{links_text}")
+    else:
+        await update.message.reply_text("⛔️ هیچ لینکی تنظیم نشده است.")
 
 
 # ثبت زیرمجموعه
@@ -329,24 +322,17 @@ async def set_link_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ لطفاً یک عدد معتبر وارد کنید.")
         return SET_LINK_COUNT
 
-async def add_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    link = update.message.text.strip()
-    current_count = context.user_data["current_count"]
-    link_count = context.user_data["link_count"]
+async def add_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
+        return
 
-    # ذخیره لینک در پایگاه داده
+    link = update.message.text.strip()
     cursor.execute("INSERT INTO join_links (link) VALUES (?)", (link,))
     conn.commit()
+    await update.message.reply_text(f"✅ لینک اضافه شد: {link}")
 
-    # بروزرسانی تعداد لینک‌های اضافه‌شده
-    context.user_data["current_count"] += 1
-
-    if current_count + 1 < link_count:
-        await update.message.reply_text(f"✅ لینک ذخیره شد. لطفاً لینک بعدی را ارسال کنید.")
-        return ADD_LINKS
-    else:
-        await update.message.reply_text("✅ همه لینک‌ها ذخیره شدند.")
-        return ConversationHandler.END
 
 async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
@@ -370,7 +356,6 @@ async def view_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # حذف لینک‌ها
 async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-
     if user_id not in ADMIN_IDS:
         await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
         return
@@ -379,6 +364,7 @@ async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     await update.message.reply_text("✅ تمام لینک‌ها حذف شدند.")
 
+# تابع دریافت لینک‌های عضویت
 def get_join_links():
     cursor.execute("SELECT link FROM join_links")
     links = cursor.fetchall()
@@ -433,8 +419,9 @@ application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), su
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
 application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
 application.add_handler(MessageHandler(filters.Text("📊 بخش آمار") & filters.User(ADMIN_IDS), show_stats))
-application.add_handler(MessageHandler(filters.Text("🔗 مشاهده لینک‌ها") & filters.User(ADMIN_IDS), view_links))
+application.add_handler(MessageHandler(filters.Text("🔗 مشاهده لینک‌ها") & filters.User(ADMIN_IDS), manage_links))
 application.add_handler(MessageHandler(filters.Text("🗑 حذف لینک‌ها") & filters.User(ADMIN_IDS), delete_links))
+application.add_handler(MessageHandler(filters.TEXT & filters.User(ADMIN_IDS), add_link))
 
 # هندلر مکالمه
 conv_handler = ConversationHandler(
