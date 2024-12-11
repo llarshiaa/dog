@@ -10,6 +10,7 @@ CHANNEL_USERNAME_2 = "dollor_ir"     # کانال دوم
 REWARD_PER_REFERRAL = 1
 MIN_WITHDRAWAL_AMOUNT = 10
 WAITING_FOR_WALLET = range(1)  # وضعیت انتظار آدرس ولت
+ADMIN_IDS = [5102021224]  # شناسه تلگرام ادمین‌ها
 
 # اتصال به پایگاه داده
 try:
@@ -91,6 +92,10 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except Exception as e:
         print(f"خطا در بررسی عضویت: {e}")
         await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
+
+            # اضافه کردن دکمه ادمین اگر کاربر ادمین باشد
+            if user_id in ADMIN_IDS:
+                buttons.append([KeyboardButton("📢 ارسال پیام همگانی")])
 
 # ثبت زیرمجموعه
 async def register_referral(user_id, referrer_id):
@@ -182,8 +187,88 @@ async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
                                     "3️⃣ درخواست برداشت ثبت کنید.\n"
                                     "4️⃣ برای پشتیبانی پیام ارسال کنید.")
 
+# مراحل مکالمه
+ASK_MESSAGE, CONFIRM_SEND = range(2)
+
+# شروع مکالمه برای ارسال پیام همگانی
+async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("⛔️ شما اجازه این عملیات را ندارید.")
+        return ConversationHandler.END
+
+    await update.message.reply_text(
+        "📢 لطفاً پیام همگانی خود را ارسال کنید:"
+    )
+    return ASK_MESSAGE
+
+# دریافت پیام از ادمین
+async def ask_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    context.user_data["broadcast_message"] = update.message.text
+
+    await update.message.reply_text(
+        f"پیام شما:\n\n{context.user_data['broadcast_message']}\n\nآیا این پیام را برای همه ارسال کنم؟",
+        reply_markup=ReplyKeyboardMarkup(
+            [["✅ بله", "❌ خیر"]],
+            resize_keyboard=True,
+            one_time_keyboard=True,
+        ),
+    )
+    return CONFIRM_SEND
+
+# تایید و ارسال پیام
+async def confirm_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if update.message.text == "✅ بله":
+        message = context.user_data.get("broadcast_message")
+
+        cursor.execute("SELECT user_id FROM users")
+        users = cursor.fetchall()
+
+        success_count = 0
+        for user in users:
+            try:
+                await context.bot.send_message(chat_id=user[0], text=message)
+                success_count += 1
+            except Exception as e:
+                logger.error(f"خطا در ارسال پیام به {user[0]}: {e}")
+
+        await update.message.reply_text(f"✅ پیام شما به {success_count} کاربر ارسال شد.")
+    else:
+        await update.message.reply_text("❌ ارسال پیام لغو شد.")
+
+    return ConversationHandler.END
+
+# لغو عملیات
+async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚫 عملیات لغو شد.")
+    return ConversationHandler.END
+
+
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
+
+    # هندلرهای ارسال پیام همگانی
+    application.add_handler(
+    ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Regex("📢 ارسال پیام همگانی"), start_broadcast)
+        ],  # شروع مکالمه
+        states={
+            # مرحله دریافت پیام از ادمین
+            ASK_MESSAGE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, ask_message)
+            ],
+            # مرحله تایید نهایی برای ارسال پیام
+            CONFIRM_SEND: [
+                MessageHandler(filters.Regex("✅ بله|❌ خیر"), confirm_send)
+            ],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel_broadcast)
+        ],  # گزینه لغو
+    )
+)
 
 # افزودن هندلرها
 application.add_handler(CommandHandler("start", start))
