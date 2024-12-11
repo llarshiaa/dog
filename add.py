@@ -352,11 +352,6 @@ async def add_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("✅ همه لینک‌ها ذخیره شدند.")
         return ConversationHandler.END
 
-# تعریف تابع لغو
-async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
-    return ConversationHandler.END
-
 # مشاهده لینک‌ها
 async def view_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -481,12 +476,20 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     return ConversationHandler.END
 
+# تعریف تابع لغو ارسال پیام همگانی
+async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚫 عملیات ارسال پیام همگانی لغو شد.")
+    return ConversationHandler.END
 
+# تعریف تابع لغو تنظیم لینک‌ها
+async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
+    return ConversationHandler.END
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
 
-# افزودن هندلر
+# افزودن هندلر تنظیم لینک‌ها
 application.add_handler(
     ConversationHandler(
         entry_points=[MessageHandler(filters.Text("⚙️ تنظیم لینک‌ها") & filters.User(ADMIN_IDS), start_set_links)],
@@ -495,13 +498,11 @@ application.add_handler(
             ADD_LINKS: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_links)],
         },
         fallbacks=[
-            CommandHandler("cancel", cancel_setting_links)  # استفاده از تابع تعریف‌شده
+            CommandHandler("cancel", cancel_setting_links)  # اینجا از تابع تعریف‌شده استفاده می‌کنیم
         ],
     )
 )
 
-    # هندلرهای ارسال پیام همگانی
-# افزودن هندلرها
 application.add_handler(
     ConversationHandler(
         entry_points=[
@@ -512,7 +513,7 @@ application.add_handler(
             CONFIRM_SEND: [MessageHandler(filters.Regex("✅ بله|❌ خیر"), confirm_send)],
         },
         fallbacks=[
-            CommandHandler("cancel", cancel_broadcast)
+            CommandHandler("cancel", cancel_broadcast)  # اینجا از تابع تعریف‌شده استفاده می‌کنیم
         ],
     )
 )
