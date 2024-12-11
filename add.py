@@ -333,7 +333,7 @@ async def add_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     conn.commit()
     await update.message.reply_text(f"✅ لینک اضافه شد: {link}")
     if not link or "http" not in link:
-    await update.message.reply_text("⛔️ لطفاً یک لینک معتبر وارد کنید.")
+        await update.message.reply_text("⛔️ لطفاً یک لینک معتبر وارد کنید.")
     return
 
 
