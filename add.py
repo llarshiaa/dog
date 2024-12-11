@@ -503,20 +503,15 @@ application.add_handler(
 )
 
     # هندلرهای ارسال پیام همگانی
+# افزودن هندلرها
 application.add_handler(
     ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex("📢 ارسال پیام همگانی"), start_broadcast)
-        ],  # شروع مکالمه
+        ],
         states={
-            # مرحله دریافت پیام از ادمین
-            ASK_MESSAGE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, ask_message)
-            ],
-            # مرحله تایید نهایی برای ارسال پیام
-            CONFIRM_SEND: [
-                MessageHandler(filters.Regex("✅ بله|❌ خیر"), confirm_send)
-            ],
+            ASK_MESSAGE: [MessageHandler(filters.TEXT & ~filters.COMMAND, ask_message)],
+            CONFIRM_SEND: [MessageHandler(filters.Regex("✅ بله|❌ خیر"), confirm_send)],
         },
         fallbacks=[
             CommandHandler("cancel", cancel_broadcast)
