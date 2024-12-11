@@ -450,7 +450,7 @@ conv_handler = ConversationHandler(
 )
 application.add_handler(conv_handler)
 
-    if name == "main":
+    if __name__ == "__main__":  # اصلاح فاصله‌گذاری
     print("🚀 ربات اجرا شد.")
     application.run_polling()
 
