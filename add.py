@@ -68,9 +68,8 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     referrer_id = context.user_data.get("referrer_id")
 
     try:
-        # بررسی عضویت در کانال اول
+        # بررسی عضویت در کانال‌ها
         member_1 = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME_1}", user_id=user_id)
-        # بررسی عضویت در کانال دوم
         member_2 = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME_2}", user_id=user_id)
 
         if member_1.status in ["member", "administrator", "creator"] and member_2.status in ["member", "administrator", "creator"]:
@@ -81,21 +80,24 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await register_referral(user_id, referrer_id)
 
             # نمایش کیبورد اصلی
-            keyboard = ReplyKeyboardMarkup([
+            buttons = [
                 [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
                 [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
                 [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
-            ], resize_keyboard=True)
-            await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=keyboard)
+            ]
+
+            # اضافه کردن دکمه ادمین
+            if user_id in ADMIN_IDS:
+                buttons.append([KeyboardButton("📢 ارسال پیام همگانی")])
+                print(f"✅ ادمین شناسایی شد: {user_id}")
+
+            reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+            await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=reply_markup)
         else:
             await query.answer("⛔️ لطفاً ابتدا عضو هر دو کانال شوید!", show_alert=True)
     except Exception as e:
         print(f"خطا در بررسی عضویت: {e}")
         await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
-
-            # اضافه کردن دکمه ادمین اگر کاربر ادمین باشد
-        if user_id in ADMIN_IDS:
-                buttons.append([KeyboardButton("📢 ارسال پیام همگانی")])
 
 # ثبت زیرمجموعه
 async def register_referral(user_id, referrer_id):
