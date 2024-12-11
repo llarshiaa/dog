@@ -424,7 +424,6 @@ application.add_handler(
     )
 )
 
-Arshia, [12/11/2024 4:58 PM]
 # افزودن هندلرها
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
