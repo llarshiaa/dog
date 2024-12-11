@@ -548,8 +548,10 @@ application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), su
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
 application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
 application.add_handler(MessageHandler(filters.Text("📊 بخش آمار") & filters.User(ADMIN_IDS), show_stats))
+application.add_handler(MessageHandler(filters.Text("⚙️ تنظیم لینک‌ها") & filters.User(ADMIN_IDS), start_set_links))
 application.add_handler(MessageHandler(filters.Text("🔗 مشاهده لینک‌ها") & filters.User(ADMIN_IDS), view_links))
 application.add_handler(MessageHandler(filters.Text("🗑 حذف لینک‌ها") & filters.User(ADMIN_IDS), delete_links))
+
 
 # هندلر مکالمه
 conv_handler = ConversationHandler(
