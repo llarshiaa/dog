@@ -249,7 +249,7 @@ async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
 application = Application.builder().token(BOT_TOKEN).build()
 
     # هندلرهای ارسال پیام همگانی
-    application.add_handler(
+application.add_handler(
     ConversationHandler(
         entry_points=[
             MessageHandler(filters.Regex("📢 ارسال پیام همگانی"), start_broadcast)
