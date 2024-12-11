@@ -450,7 +450,7 @@ conv_handler = ConversationHandler(
 )
 application.add_handler(conv_handler)
 
-    if __name__ == "__main__":
+    if name == "main":
     print("🚀 ربات اجرا شد.")
     application.run_polling()
 
