@@ -189,28 +189,6 @@ async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
         await update.message.reply_text(f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT:.2f} تون‌کوین است.")
         return ConversationHandler.END
 
-# تایید آدرس ولت
-async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    wallet_address = update.message.text
-    user_id = update.effective_user.id
-
-    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-    result = cursor.fetchone()
-    balance = result[0] if result else 0
-
-    if balance >= MIN_WITHDRAWAL_AMOUNT:
-        new_balance = balance - MIN_WITHDRAWAL_AMOUNT
-        cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
-        conn.commit()
-
-        await update.message.reply_text(f"✅ درخواست برداشت ثبت شد.\n"
-                                        f"آدرس ولت: {wallet_address}\n"
-                                        f"💰 موجودی فعلی: {new_balance:.2f} تون‌کوین.")
-        return ConversationHandler.END
-    else:
-        await update.message.reply_text("⛔️ موجودی کافی نیست.")
-        return ConversationHandler.END
-
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📞 برای پشتیبانی پیام خود را ارسال کنید. مدیران به زودی پاسخ خواهند داد.")
@@ -395,53 +373,95 @@ def get_join_links():
 def is_admin(user_id):
     return user_id in ADMIN_IDS
 
+async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    cursor.execute("SELECT referrals, balance FROM users WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+
+    # بررسی کاربر در پایگاه داده
+    if user_data:
+        referrals, balance = user_data
+        if referrals < 10:
+            await update.message.reply_text(
+                f"⛔️ برای درخواست برداشت، باید حداقل 10 زیرمجموعه داشته باشید.\n"
+                f"🔗 تعداد زیرمجموعه‌های شما: {referrals}"
+            )
+            return ConversationHandler.END
+
+        if balance < MIN_WITHDRAWAL_AMOUNT:
+            await update.message.reply_text(
+                f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT:.2f} تون‌کوین است.\n"
+                f"💰 موجودی فعلی شما: {balance:.2f} تون‌کوین."
+            )
+            return ConversationHandler.END
+
+        # درخواست آدرس ولت
+        await update.message.reply_text("💼 لطفاً آدرس ولت تون‌کوین خود را وارد کنید:")
+        return WAITING_FOR_WALLET
+    else:
+        await update.message.reply_text("⛔️ اطلاعاتی برای شما یافت نشد. لطفاً ابتدا /start را بزنید.")
+        return ConversationHandler.END
+
+
 async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
     wallet_address = update.message.text.strip()  # آدرس ولت کاربر
     user_id = update.effective_user.id
     user_name = update.effective_user.username or "نام کاربری موجود نیست"
     user_full_name = update.effective_user.full_name or "نام کامل موجود نیست"
 
-    # دریافت موجودی کاربر از پایگاه داده
-    cursor.execute("SELECT balance FROM users WHERE user_id = ?", (user_id,))
-    result = cursor.fetchone()
-    balance = result[0] if result else 0
-
-    # چک کردن حداقل موجودی برای برداشت
-    if balance >= MIN_WITHDRAWAL_AMOUNT:
-        # کاهش موجودی کاربر و به‌روزرسانی در پایگاه داده
-        new_balance = balance - MIN_WITHDRAWAL_AMOUNT
-        cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
-        conn.commit()
-
-        # ارسال پیام تأیید برای کاربر
-        await update.message.reply_text(
-            f"✅ درخواست برداشت ثبت شد.\n"
-            f"آدرس ولت: {wallet_address}\n"
-            f"💰 موجودی فعلی: {new_balance:.2f} تون‌کوین."
-        )
-
-        # ارسال پیام به ادمین‌ها
-        for admin_id in ADMIN_IDS:
-            try:
-                await context.bot.send_message(
-                    chat_id=admin_id,
-                    text=f"🔔 درخواست برداشت جدید:\n\n"
-                         f"👤 کاربر: {user_full_name} (@{user_name})\n"
-                         f"🆔 شناسه: {user_id}\n"
-                         f"💰 مبلغ: {MIN_WITHDRAWAL_AMOUNT:.2f} تون‌کوین\n"
-                         f"🏦 آدرس ولت: {wallet_address}"
-                )
-            except Exception as e:
-                print(f"خطا در ارسال پیام به ادمین {admin_id}: {e}")
-
+    # دریافت موجودی و تعداد زیرمجموعه‌های کاربر
+    cursor.execute("SELECT referrals, balance FROM users WHERE user_id = ?", (user_id,))
+    user_data = cursor.fetchone()
+    if not user_data:
+        await update.message.reply_text("⛔️ اطلاعاتی برای شما یافت نشد. لطفاً ابتدا /start را بزنید.")
         return ConversationHandler.END
-    else:
-        # ارسال پیام خطا برای کاربر
+
+    referrals, balance = user_data
+
+    # بررسی حداقل زیرمجموعه‌ها
+    if referrals < 10:
         await update.message.reply_text(
-            f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT:.2f} تون‌کوین است. "
-            f"موجودی فعلی شما: {balance:.2f} تون‌کوین."
+            f"⛔️ برای درخواست برداشت، باید حداقل 10 زیرمجموعه داشته باشید.\n"
+            f"🔗 تعداد زیرمجموعه‌های شما: {referrals}"
         )
         return ConversationHandler.END
+
+    # بررسی حداقل موجودی
+    if balance < MIN_WITHDRAWAL_AMOUNT:
+        await update.message.reply_text(
+            f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT:.2f} تون‌کوین است.\n"
+            f"💰 موجودی فعلی شما: {balance:.2f} تون‌کوین."
+        )
+        return ConversationHandler.END
+
+    # کاهش موجودی کاربر و ذخیره در پایگاه داده
+    new_balance = balance - MIN_WITHDRAWAL_AMOUNT
+    cursor.execute("UPDATE users SET balance = ? WHERE user_id = ?", (new_balance, user_id))
+    conn.commit()
+
+    # ارسال پیام تایید برای کاربر
+    await update.message.reply_text(
+        f"✅ درخواست برداشت ثبت شد.\n"
+        f"آدرس ولت: {wallet_address}\n"
+        f"💰 موجودی فعلی: {new_balance:.2f} تون‌کوین."
+    )
+
+    # ارسال پیام به ادمین‌ها
+    for admin_id in ADMIN_IDS:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=f"🔔 درخواست برداشت جدید:\n\n"
+                     f"👤 کاربر: {user_full_name} (@{user_name})\n"
+                     f"🆔 شناسه: {user_id}\n"
+                     f"💰 مبلغ: {MIN_WITHDRAWAL_AMOUNT:.2f} تون‌کوین\n"
+                     f"🏦 آدرس ولت: {wallet_address}"
+            )
+        except Exception as e:
+            print(f"خطا در ارسال پیام به ادمین {admin_id}: {e}")
+
+    return ConversationHandler.END
+
 
 
 # تنظیمات اصلی ربات
