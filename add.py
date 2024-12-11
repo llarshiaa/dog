@@ -380,7 +380,7 @@ application.add_handler(
         ],
         states={
             SET_LINK_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_link_count)],
-            ADD_LINKS: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_links)],
+            ADD_LINKS: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_link)],
         },
         fallbacks=[
             CommandHandler("cancel", cancel_setting_links)
