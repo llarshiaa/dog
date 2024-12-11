@@ -352,8 +352,9 @@ async def add_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("✅ همه لینک‌ها ذخیره شدند.")
         return ConversationHandler.END
 
-async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚫 عملیات لغو شد.")
+# تعریف تابع لغو
+async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
     return ConversationHandler.END
 
 # مشاهده لینک‌ها
@@ -485,17 +486,16 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
 
+# افزودن هندلر
 application.add_handler(
     ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Text("⚙️ تنظیم لینک‌ها") & filters.User(ADMIN_IDS), start_set_links)
-        ],
+        entry_points=[MessageHandler(filters.Text("⚙️ تنظیم لینک‌ها") & filters.User(ADMIN_IDS), start_set_links)],
         states={
             SET_LINK_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_link_count)],
             ADD_LINKS: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_links)],
         },
         fallbacks=[
-            CommandHandler("cancel", cancel_setting_links)
+            CommandHandler("cancel", cancel_setting_links)  # استفاده از تابع تعریف‌شده
         ],
     )
 )
