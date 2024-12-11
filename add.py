@@ -94,7 +94,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
 
             # اضافه کردن دکمه ادمین اگر کاربر ادمین باشد
-            if user_id in ADMIN_IDS:
+        if user_id in ADMIN_IDS:
                 buttons.append([KeyboardButton("📢 ارسال پیام همگانی")])
 
 # ثبت زیرمجموعه
