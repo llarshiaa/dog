@@ -332,6 +332,9 @@ async def add_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.execute("INSERT INTO join_links (link) VALUES (?)", (link,))
     conn.commit()
     await update.message.reply_text(f"✅ لینک اضافه شد: {link}")
+    if not link or "http" not in link:
+    await update.message.reply_text("⛔️ لطفاً یک لینک معتبر وارد کنید.")
+    return
 
 
 async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -369,6 +372,13 @@ def get_join_links():
     cursor.execute("SELECT link FROM join_links")
     links = cursor.fetchall()
     return [link[0] for link in links]
+
+def debug_links():
+    cursor.execute("SELECT * FROM join_links")
+    return cursor.fetchall()
+
+links = debug_links()
+print(f"لینک‌های موجود در دیتابیس: {links}")
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
