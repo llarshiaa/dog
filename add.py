@@ -1,3 +1,4 @@
+Arshia, [12/11/2024 4:58 PM]
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, ConversationHandler
 from telegram.ext import filters
@@ -39,6 +40,7 @@ try:
 except sqlite3.Error as e:
     print(f"خطا در ایجاد جدول لینک‌ها: {e}")
 
+# تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     referrer_id = None
@@ -59,21 +61,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # ذخیره referrer_id
         if referrer_id and referrer_id != user_id:
             context.user_data["referrer_id"] = referrer_id
-
-    # افزودن دکمه‌های ادمین اگر کاربر ادمین باشد
-    if user_id in ADMIN_IDS:
-        buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
-        buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
-        buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
-
-    reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-
-    # ارسال پیام خوش‌آمدگویی با کیبورد معمولی
-    await update.message.reply_text(
-        "✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید:",
-        reply_markup=reply_markup
-    )
-        return
 
     # دریافت لینک‌های عضویت
     join_links = get_join_links()
@@ -130,12 +117,12 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
         ]
 
+Arshia, [12/11/2024 4:58 PM]
 # اضافه کردن دکمه ادمین
         if user_id in ADMIN_IDS:
             buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
             buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
             buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
-
 
         reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
         await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=reply_markup)
@@ -222,6 +209,7 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ موجودی کافی نیست.")
         return ConversationHandler.END
 
+Arshia, [12/11/2024 4:58 PM]
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📞 برای پشتیبانی پیام خود را ارسال کنید. مدیران به زودی پاسخ خواهند داد.")
@@ -333,6 +321,7 @@ async def set_link_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["link_count"] = link_count
         context.user_data["current_count"] = 0
 
+Arshia, [12/11/2024 4:58 PM]
 # حذف لینک‌های قبلی
         cursor.execute("DELETE FROM join_links")
         conn.commit()
@@ -440,6 +429,7 @@ application.add_handler(
     )
 )
 
+Arshia, [12/11/2024 4:58 PM]
 # افزودن هندلرها
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
@@ -460,7 +450,6 @@ conv_handler = ConversationHandler(
 )
 application.add_handler(conv_handler)
 
-if __name__ == "__main__":
+if name == "main":
     print("🚀 ربات اجرا شد.")
     application.run_polling()
-
