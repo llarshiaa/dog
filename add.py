@@ -61,57 +61,74 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if referrer_id and referrer_id != user_id:
             context.user_data["referrer_id"] = referrer_id
 
-    # نمایش کیبورد عضویت
-    keyboard = InlineKeyboardMarkup([
-        [InlineKeyboardButton("📢 عضویت در کانال اول", url=f"https://t.me/{CHANNEL_USERNAME_1}")],
-        [InlineKeyboardButton("📢 عضویت در کانال دوم", url=f"https://t.me/{CHANNEL_USERNAME_2}")],
-        [InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")]
-    ])
+    # دریافت لینک‌های عضویت
+    join_links = get_join_links()
+
+    if not join_links:  # اگر لینک‌ها خالی باشد
+        await update.message.reply_text("⛔️ لینک‌های عضویت تنظیم نشده‌اند. لطفاً با ادمین تماس بگیرید.")
+        return
+
+    # ایجاد دکمه‌های عضویت
+    keyboard_buttons = [
+        [InlineKeyboardButton(f"📢 عضویت در کانال {i + 1}", url=link)] for i, link in enumerate(join_links)
+    ]
+    keyboard_buttons.append([InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")])
+
+    keyboard = InlineKeyboardMarkup(keyboard_buttons)
+
     await update.message.reply_text(
         "⛔️ برای استفاده از ربات ابتدا باید عضو کانال‌های زیر شوید:",
         reply_markup=keyboard
     )
 
 # بررسی عضویت در هر دو کانال
+# بررسی عضویت در هر دو کانال
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
     referrer_id = context.user_data.get("referrer_id")
 
+    join_links = get_join_links()
+
+    if not join_links:
+        await query.answer("⛔️ لینک‌های عضویت تنظیم نشده‌اند!", show_alert=True)
+        return
+
     try:
-        # بررسی عضویت در کانال‌ها
-        member_1 = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME_1}", user_id=user_id)
-        member_2 = await context.bot.get_chat_member(chat_id=f"@{CHANNEL_USERNAME_2}", user_id=user_id)
+        # بررسی عضویت در همه کانال‌ها
+        for link in join_links:
+            channel_username = link.split("/")[-1]
+            member = await context.bot.get_chat_member(chat_id=f"@{channel_username}", user_id=user_id)
+            if member.status not in ["member", "administrator", "creator"]:
+                await query.answer("⛔️ لطفاً ابتدا عضو همه کانال‌ها شوید!", show_alert=True)
+                return
 
-        if member_1.status in ["member", "administrator", "creator"] and member_2.status in ["member", "administrator", "creator"]:
-            await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.")
+        await query.message.edit_text("✅ عضویت شما تأیید شد! حالا می‌توانید از ربات استفاده کنید.")
 
-            # ثبت زیرمجموعه
-            if referrer_id:
-                await register_referral(user_id, referrer_id)
+        # ثبت زیرمجموعه
+        if referrer_id:
+            await register_referral(user_id, referrer_id)
 
-            # نمایش کیبورد اصلی
-            buttons = [
-                [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
-                [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
-                [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
-            ]
+        # نمایش کیبورد اصلی
+        buttons = [
+            [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
+            [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
+            [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
+        ]
 
-            # اضافه کردن دکمه ادمین
-            if user_id in ADMIN_IDS:
-                buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
-                buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها")])
-                buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
-                buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
-                print(f"✅ ادمین شناسایی شد: {user_id}")
+        # اضافه کردن دکمه ادمین
+        if user_id in ADMIN_IDS:
+            buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
+            buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
+            buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
 
-            reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
-            await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=reply_markup)
-        else:
-            await query.answer("⛔️ لطفاً ابتدا عضو هر دو کانال شوید!", show_alert=True)
+        reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+        await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=reply_markup)
+
     except Exception as e:
         print(f"خطا در بررسی عضویت: {e}")
         await query.answer("⛔️ خطا در بررسی عضویت!", show_alert=True)
+
 
 # ثبت زیرمجموعه
 async def register_referral(user_id, referrer_id):
@@ -368,6 +385,11 @@ async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cursor.execute("DELETE FROM join_links")
     conn.commit()
     await update.message.reply_text("✅ تمام لینک‌ها حذف شدند.")
+
+def get_join_links():
+    cursor.execute("SELECT link FROM join_links")
+    links = cursor.fetchall()
+    return [link[0] for link in links]
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
