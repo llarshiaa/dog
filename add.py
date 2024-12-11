@@ -101,6 +101,8 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if user_id in ADMIN_IDS:
                 buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
                 buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها")])
+                buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
+                buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
                 print(f"✅ ادمین شناسایی شد: {user_id}")
 
             reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
