@@ -266,7 +266,7 @@ application.add_handler(
         },
         fallbacks=[
             CommandHandler("cancel", cancel_broadcast)
-        ],  # گزینه لغو
+        ],
     )
 )
 
