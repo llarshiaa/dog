@@ -233,10 +233,29 @@ async def ask_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     return CONFIRM_SEND
 
 # تایید و ارسال پیام
+# تایید و ارسال پیام
 async def confirm_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if update.message.text == "✅ بله":
-        message = context.user_data.get("broadcast_message")
+    user_id = update.effective_user.id
+    message = context.user_data.get("broadcast_message", None)
 
+    # بررسی اگر پیام تنظیم نشده باشد
+    if not message:
+        await update.message.reply_text("⛔️ هیچ پیامی برای ارسال تنظیم نشده است.")
+        return ConversationHandler.END
+
+    # منوی اصلی برای بازگشت
+    main_menu = ReplyKeyboardMarkup(
+        [
+            [KeyboardButton("🔗 لینک دعوت و درآمدزایی"), KeyboardButton("👤 پروفایل")],
+            [KeyboardButton("💸 برداشت"), KeyboardButton("📊 گزارش وضعیت روز")],
+            [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")],
+            [KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")]
+        ],
+        resize_keyboard=True
+    )
+
+    if update.message.text == "✅ بله":
+        # ارسال پیام به کاربران
         cursor.execute("SELECT user_id FROM users")
         users = cursor.fetchall()
 
@@ -246,21 +265,22 @@ async def confirm_send(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await context.bot.send_message(chat_id=user[0], text=message)
                 success_count += 1
             except Exception as e:
-                logger.error(f"خطا در ارسال پیام به {user[0]}: {e}")
+                print(f"خطا در ارسال پیام به {user[0]}: {e}")
 
-        await update.message.reply_text(f"✅ پیام شما به {success_count} کاربر ارسال شد.")
-    else:
-        await update.message.reply_text("❌ ارسال پیام لغو شد.")
+        # پیام موفقیت و بازگشت به منوی اصلی
+        await update.message.reply_text(
+            f"✅ پیام شما با موفقیت به {success_count} کاربر ارسال شد.",
+            reply_markup=main_menu
+        )
+    elif update.message.text == "❌ خیر":
+        # لغو عملیات و بازگشت به منوی اصلی
+        await update.message.reply_text(
+            "❌ ارسال پیام لغو شد.",
+            reply_markup=main_menu
+        )
 
     return ConversationHandler.END
 
-# لغو عملیات
-async def cancel_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚫 عملیات لغو شد.")
-    return ConversationHandler.END
-
-async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
 
     # بررسی اینکه آیا کاربر ادمین است
     if user_id not in ADMIN_IDS:
