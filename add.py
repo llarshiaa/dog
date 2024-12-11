@@ -118,9 +118,9 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # اضافه کردن دکمه ادمین
         for admin in ADMIN_IDS:
          if user_id in admin:
-             buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
-             buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
-             buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
+            buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
+            buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
+            buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
 
         reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
         await query.message.reply_text("✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید.", reply_markup=reply_markup)
