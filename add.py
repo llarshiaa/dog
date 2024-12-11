@@ -1,3 +1,4 @@
+Arshia, [12/11/2024 4:58 PM]
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, ConversationHandler
 from telegram.ext import filters
@@ -10,7 +11,7 @@ CHANNEL_USERNAME_2 = "dollor_ir"     # کانال دوم
 REWARD_PER_REFERRAL = 1
 MIN_WITHDRAWAL_AMOUNT = 10
 WAITING_FOR_WALLET = range(1)  # وضعیت انتظار آدرس ولت
-ADMIN_IDS = [5032856938]  # شناسه تلگرام ادمین‌ها
+ADMIN_IDS = [5102021224, 6827108476]  # شناسه تلگرام ادمین‌ها
 
 # اتصال به پایگاه داده
 try:
@@ -116,7 +117,8 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
         ]
 
-        # اضافه کردن دکمه ادمین
+Arshia, [12/11/2024 4:58 PM]
+# اضافه کردن دکمه ادمین
         if user_id in ADMIN_IDS:
             buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
             buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
@@ -207,7 +209,7 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ موجودی کافی نیست.")
         return ConversationHandler.END
 
-
+Arshia, [12/11/2024 4:58 PM]
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📞 برای پشتیبانی پیام خود را ارسال کنید. مدیران به زودی پاسخ خواهند داد.")
@@ -319,7 +321,8 @@ async def set_link_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["link_count"] = link_count
         context.user_data["current_count"] = 0
 
-        # حذف لینک‌های قبلی
+Arshia, [12/11/2024 4:58 PM]
+# حذف لینک‌های قبلی
         cursor.execute("DELETE FROM join_links")
         conn.commit()
 
@@ -431,6 +434,7 @@ application.add_handler(
     )
 )
 
+Arshia, [12/11/2024 4:58 PM]
 # افزودن هندلرها
 application.add_handler(CommandHandler("start", start))
 application.add_handler(MessageHandler(filters.Text("🔗 لینک دعوت و درآمدزایی"), referral_link))
@@ -451,6 +455,6 @@ conv_handler = ConversationHandler(
 )
 application.add_handler(conv_handler)
 
-if __name__ == "__main__":
+if name == "main":
     print("🚀 ربات اجرا شد.")
     application.run_polling()
