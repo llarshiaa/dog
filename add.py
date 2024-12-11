@@ -73,8 +73,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     # بررسی لینک‌های عضویت
     join_links = get_join_links()  # دریافت لینک‌ها از جدول
     if join_links:
-    keyboard_buttons = [
-        [InlineKeyboardButton(f"📢 عضویت در کانال {i + 1}", url=link)] for i, link in enumerate(join_links)
+        keyboard_buttons = [
+            [InlineKeyboardButton(f"📢 عضویت در کانال {i + 1}", url=link)] for i, link in enumerate(join_links)
     ]
     keyboard_buttons.append([InlineKeyboardButton("✅ تایید عضویت", callback_data="check_membership")])
 
