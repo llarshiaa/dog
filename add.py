@@ -34,6 +34,18 @@ try:
 except sqlite3.Error as e:
     print(f"خطا در اتصال به پایگاه داده: {e}")
 
+# اتصال به دیتابیس
+conn = sqlite3.connect("bot.db", check_same_thread=False)
+cursor = conn.cursor()
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS join_links (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    link TEXT NOT NULL
+)
+""")
+conn.commit()
+
+
 # تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -302,148 +314,126 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"خطا در دریافت آمار: {e}")
         await update.message.reply_text("❌ خطایی در دریافت آمار رخ داد.")
 
-async def start_set_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-
-    if user_id not in ADMIN_IDS:
-        await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
-        return ConversationHandler.END
-
-    await update.message.reply_text("🔗 چند لینک می‌خواهید تنظیم کنید؟ (یک عدد وارد کنید)")
-    return SET_LINK_COUNT
-
-async def set_link_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        link_count = int(update.message.text)
-        if link_count <= 0:
-            raise ValueError
-
-        # ذخیره تعداد لینک‌ها در کانتکست
-        context.user_data["link_count"] = link_count
-        context.user_data["current_count"] = 0
-
-        # حذف لینک‌های قبلی
-        cursor.execute("DELETE FROM join_links")
-        conn.commit()
-
-        await update.message.reply_text(
-            f"✅ تعداد {link_count} لینک تنظیم خواهد شد. حالا لینک اول را ارسال کنید."
-        )
-        return ADD_LINKS
-    except ValueError:
-        await update.message.reply_text("⛔️ لطفاً یک عدد معتبر وارد کنید.")
-        return SET_LINK_COUNT
-
-
-# حذف لینک‌های قبلی
-        cursor.execute("DELETE FROM join_links")
-        conn.commit()
-
-        await update.message.reply_text(
-            f"✅ تعداد {link_count} لینک تنظیم خواهد شد. حالا لینک اول را ارسال کنید."
-        )
-        return ADD_LINKS
-    except ValueError:
-        await update.message.reply_text("⛔️ لطفاً یک عدد معتبر وارد کنید.")
-        return SET_LINK_COUNT
-
-async def add_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
+# شروع ثبت لینک
+async def start_add_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in ADMIN_IDS:
         await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
         return
 
+    await update.message.reply_text(
+        "🔗 لطفاً لینک‌های مورد نظر خود را یکی‌یکی ارسال کنید.\n"
+        "📌 وقتی تمام لینک‌ها را اضافه کردید، دستور `/done` را ارسال کنید.",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ برگشت به منو", callback_data="admin_menu")]
+        ])
+    )
+    return ADD_LINKS
+
+
+# ثبت لینک‌ها
+async def add_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     link = update.message.text.strip()
+    if not link.startswith("http"):
+        await update.message.reply_text("⛔️ لطفاً یک لینک معتبر ارسال کنید.")
+        return ADD_LINKS
+
     cursor.execute("INSERT INTO join_links (link) VALUES (?)", (link,))
     conn.commit()
     await update.message.reply_text(f"✅ لینک اضافه شد: {link}")
-    if not link or "http" not in link:
-        await update.message.reply_text("⛔️ لطفاً یک لینک معتبر وارد کنید.")
-    return
+    return ADD_LINKS
 
-
-async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
-    return ConversationHandler.END
 
 # مشاهده لینک‌ها
 async def view_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
-
     if user_id not in ADMIN_IDS:
         await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
         return
 
-    links = get_join_links()  # فراخوانی تابع برای دریافت لینک‌ها
-    if links:
-        links_text = "\n".join([f"🔗 {link}" for link in links])
-        await update.message.reply_text(f"📃 لینک‌های ثبت‌شده:\n\n{links_text}")
-    else:
+    cursor.execute("SELECT * FROM join_links")
+    links = cursor.fetchall()
+    if not links:
         await update.message.reply_text("⛔️ هیچ لینکی ثبت نشده است.")
+        return
 
-# حذف لینک‌ها
-async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    links_text = "\n".join([f"{i + 1}. {link[1]}" for i, link in enumerate(links)])
+    await update.message.reply_text(
+        f"📃 لینک‌های ثبت‌شده:\n\n{links_text}",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("↩️ برگشت به منو", callback_data="admin_menu")]
+        ])
+    )
+
+
+# شروع حذف لینک‌ها
+async def start_delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
     if user_id not in ADMIN_IDS:
         await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
         return
 
-    cursor.execute("DELETE FROM join_links")
-    conn.commit()
-    await update.message.reply_text("✅ تمام لینک‌ها حذف شدند.")
-
-# تابع دریافت لینک‌های عضویت
-def get_join_links():
-    cursor.execute("SELECT link FROM join_links")
-    links = cursor.fetchall()
-    return [link[0] for link in links]
-
-def debug_links():
     cursor.execute("SELECT * FROM join_links")
-    return cursor.fetchall()
+    links = cursor.fetchall()
+    if not links:
+        await update.message.reply_text("⛔️ هیچ لینکی برای حذف وجود ندارد.")
+        return
 
-links = debug_links()
-print(f"لینک‌های موجود در دیتابیس: {links}")
+    keyboard_buttons = [
+        [InlineKeyboardButton(f"🗑 حذف {link[1]}", callback_data=f"delete_link:{link[0]}")]
+        for link in links
+    ]
+    keyboard_buttons.append([InlineKeyboardButton("↩️ برگشت به منو", callback_data="admin_menu")])
+
+    await update.message.reply_text(
+        "🗑 برای حذف لینک، یکی از گزینه‌های زیر را انتخاب کنید:",
+        reply_markup=InlineKeyboardMarkup(keyboard_buttons)
+    )
+    return DELETE_LINKS
+
+
+# حذف لینک‌ها
+async def delete_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    data = query.data.split(":")
+    if data[0] == "delete_link":
+        link_id = int(data[1])
+        cursor.execute("DELETE FROM join_links WHERE id = ?", (link_id,))
+        conn.commit()
+        await query.message.edit_text(
+            "✅ لینک حذف شد.",
+            reply_markup=InlineKeyboardMarkup([
+                [InlineKeyboardButton("↩️ برگشت به منو", callback_data="admin_menu")]
+            ])
+        )
+
+
+# منوی ادمین
+async def admin_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.message.edit_text(
+        "⚙️ منوی مدیریت:\n\n"
+        "🔗 ثبت لینک‌های عضویت اجباری\n"
+        "🔍 مشاهده لینک‌های تنظیم‌شده\n"
+        "🗑 حذف لینک‌های ثبت‌شده",
+        reply_markup=InlineKeyboardMarkup([
+            [InlineKeyboardButton("➕ ثبت لینک", callback_data="add_links")],
+            [InlineKeyboardButton("🔗 مشاهده لینک‌ها", callback_data="view_links")],
+            [InlineKeyboardButton("🗑 حذف لینک‌ها", callback_data="delete_links")]
+        ])
+    )
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
 
-application.add_handler(
-    ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Text("⚙️ تنظیم لینک‌ها") & filters.User(ADMIN_IDS), start_set_links)
-        ],
-        states={
-            SET_LINK_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_link_count)],
-            ADD_LINKS: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_link)],
-        },
-        fallbacks=[
-            CommandHandler("cancel", cancel_setting_links)
-        ],
-    )
-)
-
-    # هندلرهای ارسال پیام همگانی
-application.add_handler(
-    ConversationHandler(
-        entry_points=[
-            MessageHandler(filters.Regex("📢 ارسال پیام همگانی"), start_broadcast)
-        ],  # شروع مکالمه
-        states={
-            # مرحله دریافت پیام از ادمین
-            ASK_MESSAGE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, ask_message)
-            ],
-            # مرحله تایید نهایی برای ارسال پیام
-            CONFIRM_SEND: [
-                MessageHandler(filters.Regex("✅ بله|❌ خیر"), confirm_send)
-            ],
-        },
-        fallbacks=[
-            CommandHandler("cancel", cancel_broadcast)
-        ],
-    )
-)
+application.add_handler(ConversationHandler(
+    entry_points=[CallbackQueryHandler(start_add_links, pattern="add_links")],
+    states={
+        ADD_LINKS: [CommandHandler("done", admin_menu), CallbackQueryHandler(admin_menu, pattern="admin_menu"),
+                    CommandHandler("cancel", admin_menu), MessageHandler(filters.TEXT & ~filters.COMMAND, add_links)],
+    },
+    fallbacks=[CallbackQueryHandler(admin_menu, pattern="admin_menu")]
+))
 
 # افزودن هندلرها
 application.add_handler(CommandHandler("start", start))
@@ -454,9 +444,10 @@ application.add_handler(MessageHandler(filters.Text("📞 پشتیبانی"), su
 application.add_handler(MessageHandler(filters.Text("❓ راهنما"), help_section))
 application.add_handler(CallbackQueryHandler(check_membership, pattern="check_membership"))
 application.add_handler(MessageHandler(filters.Text("📊 بخش آمار") & filters.User(ADMIN_IDS), show_stats))
-application.add_handler(MessageHandler(filters.Text("🔗 مشاهده لینک‌ها") & filters.User(ADMIN_IDS), manage_links))
-application.add_handler(MessageHandler(filters.Text("🗑 حذف لینک‌ها") & filters.User(ADMIN_IDS), delete_links))
-application.add_handler(MessageHandler(filters.TEXT & filters.User(ADMIN_IDS), add_link))
+application.add_handler(CallbackQueryHandler(view_links, pattern="view_links"))
+application.add_handler(CallbackQueryHandler(start_delete_links, pattern="delete_links"))
+application.add_handler(CallbackQueryHandler(delete_links, pattern="delete_link:*"))
+application.add_handler(CallbackQueryHandler(admin_menu, pattern="admin_menu"))
 
 # هندلر مکالمه
 conv_handler = ConversationHandler(
