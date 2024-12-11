@@ -60,19 +60,19 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if referrer_id and referrer_id != user_id:
             context.user_data["referrer_id"] = referrer_id
 
-    # اگر کاربر ادمین باشد
+    # افزودن دکمه‌های ادمین اگر کاربر ادمین باشد
     if user_id in ADMIN_IDS:
-        buttons = [
-            [InlineKeyboardButton("⚙️ تنظیم لینک‌ها", callback_data="admin_set_links")],
-            [InlineKeyboardButton("🔗 مشاهده لینک‌ها", callback_data="admin_view_links")],
-            [InlineKeyboardButton("🗑 حذف لینک‌ها", callback_data="admin_delete_links")],
-            [InlineKeyboardButton("📊 بخش آمار", callback_data="admin_stats")],
-        ]
-        keyboard = InlineKeyboardMarkup(buttons)
-        await update.message.reply_text(
-            "✅ شما به عنوان ادمین وارد شدید. از دکمه‌های زیر برای مدیریت استفاده کنید:",
-            reply_markup=keyboard
-        )
+        buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
+        buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها"), KeyboardButton("🔗 مشاهده لینک‌ها")])
+        buttons.append([KeyboardButton("🗑 حذف لینک‌ها")])
+
+    reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
+
+    # ارسال پیام خوش‌آمدگویی با کیبورد معمولی
+    await update.message.reply_text(
+        "✅ از دکمه‌های زیر برای استفاده از امکانات ربات استفاده کنید:",
+        reply_markup=reply_markup
+    )
         return
 
     # دریافت لینک‌های عضویت
