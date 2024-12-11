@@ -28,6 +28,17 @@ try:
 except sqlite3.Error as e:
     print(f"خطا در اتصال به پایگاه داده: {e}")
 
+try:
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS join_links (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        link TEXT NOT NULL
+    )
+    """)
+    conn.commit()
+except sqlite3.Error as e:
+    print(f"خطا در ایجاد جدول لینک‌ها: {e}")
+
 # تابع شروع
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -89,6 +100,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             # اضافه کردن دکمه ادمین
             if user_id in ADMIN_IDS:
                 buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
+                buttons.append([KeyboardButton("⚙️ تنظیم لینک‌ها")])
                 print(f"✅ ادمین شناسایی شد: {user_id}")
 
             reply_markup = ReplyKeyboardMarkup(buttons, resize_keyboard=True)
@@ -191,6 +203,7 @@ async def help_section(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # مراحل مکالمه
 ASK_MESSAGE, CONFIRM_SEND = range(2)
+SET_LINK_COUNT, ADD_LINKS = range(2)
 
 # شروع مکالمه برای ارسال پیام همگانی
 async def start_broadcast(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -267,9 +280,83 @@ async def show_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.error(f"خطا در دریافت آمار: {e}")
         await update.message.reply_text("❌ خطایی در دریافت آمار رخ داد.")
 
+async def start_set_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+
+    if user_id not in ADMIN_IDS:
+        await update.message.reply_text("⛔️ شما اجازه دسترسی به این بخش را ندارید.")
+        return ConversationHandler.END
+
+    await update.message.reply_text("🔗 چند لینک می‌خواهید تنظیم کنید؟ (یک عدد وارد کنید)")
+    return SET_LINK_COUNT
+
+async def set_link_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    try:
+        link_count = int(update.message.text)
+        if link_count <= 0:
+            raise ValueError
+
+        # ذخیره تعداد لینک‌ها در کانتکست
+        context.user_data["link_count"] = link_count
+        context.user_data["current_count"] = 0
+
+        # حذف لینک‌های قبلی
+        cursor.execute("DELETE FROM join_links")
+        conn.commit()
+
+        await update.message.reply_text(
+            f"✅ تعداد {link_count} لینک تنظیم خواهد شد. حالا لینک اول را ارسال کنید."
+        )
+        return ADD_LINKS
+    except ValueError:
+        await update.message.reply_text("⛔️ لطفاً یک عدد معتبر وارد کنید.")
+        return SET_LINK_COUNT
+
+async def add_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    link = update.message.text.strip()
+    current_count = context.user_data["current_count"]
+    link_count = context.user_data["link_count"]
+
+    # ذخیره لینک در پایگاه داده
+    cursor.execute("INSERT INTO join_links (link) VALUES (?)", (link,))
+    conn.commit()
+
+    # بروزرسانی تعداد لینک‌های اضافه‌شده
+    context.user_data["current_count"] += 1
+
+    if current_count + 1 < link_count:
+        await update.message.reply_text(f"✅ لینک ذخیره شد. لطفاً لینک بعدی را ارسال کنید.")
+        return ADD_LINKS
+    else:
+        await update.message.reply_text("✅ همه لینک‌ها ذخیره شدند.")
+        return ConversationHandler.END
+
+async def cancel_setting_links(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🚫 عملیات تنظیم لینک‌ها لغو شد.")
+    return ConversationHandler.END
+
+def get_join_links():
+    cursor.execute("SELECT link FROM join_links")
+    links = cursor.fetchall()
+    return [link[0] for link in links]
 
 # تنظیمات اصلی ربات
 application = Application.builder().token(BOT_TOKEN).build()
+
+application.add_handler(
+    ConversationHandler(
+        entry_points=[
+            MessageHandler(filters.Text("⚙️ تنظیم لینک‌ها") & filters.User(ADMIN_IDS), start_set_links)
+        ],
+        states={
+            SET_LINK_COUNT: [MessageHandler(filters.TEXT & ~filters.COMMAND, set_link_count)],
+            ADD_LINKS: [MessageHandler(filters.TEXT & ~filters.COMMAND, add_links)],
+        },
+        fallbacks=[
+            CommandHandler("cancel", cancel_setting_links)
+        ],
+    )
+)
 
     # هندلرهای ارسال پیام همگانی
 application.add_handler(
