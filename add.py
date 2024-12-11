@@ -1,4 +1,3 @@
-Arshia, [12/11/2024 4:58 PM]
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ContextTypes, ConversationHandler
 from telegram.ext import filters
@@ -83,7 +82,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
 # بررسی عضویت در هر دو کانال
-# بررسی عضویت در هر دو کانال
 async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     user_id = query.from_user.id
@@ -117,7 +115,6 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [KeyboardButton("📞 پشتیبانی"), KeyboardButton("❓ راهنما")]
         ]
 
-Arshia, [12/11/2024 4:58 PM]
 # اضافه کردن دکمه ادمین
         if user_id in ADMIN_IDS:
             buttons.append([KeyboardButton("📢 ارسال پیام همگانی"), KeyboardButton("📊 بخش آمار")])
@@ -209,7 +206,6 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⛔️ موجودی کافی نیست.")
         return ConversationHandler.END
 
-Arshia, [12/11/2024 4:58 PM]
 # پشتیبانی
 async def support(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📞 برای پشتیبانی پیام خود را ارسال کنید. مدیران به زودی پاسخ خواهند داد.")
@@ -321,7 +317,7 @@ async def set_link_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["link_count"] = link_count
         context.user_data["current_count"] = 0
 
-Arshia, [12/11/2024 4:58 PM]
+
 # حذف لینک‌های قبلی
         cursor.execute("DELETE FROM join_links")
         conn.commit()
