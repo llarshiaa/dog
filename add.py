@@ -7,8 +7,8 @@ import sqlite3
 BOT_TOKEN = "7832824273:AAHcdtxb1x2FD5Ywwf2IYzR3h6sk81mrCkM"
 CHANNEL_USERNAME_1 = "tegaratnegar"  # کانال اول
 CHANNEL_USERNAME_2 = "dollor_ir"     # کانال دوم
-REWARD_PER_REFERRAL = 1
-MIN_WITHDRAWAL_AMOUNT = 10
+REWARD_PER_REFERRAL = 0.01
+MIN_WITHDRAWAL_AMOUNT = 0.1
 WAITING_FOR_WALLET = range(1)  # وضعیت انتظار آدرس ولت
 ADMIN_IDS = [5102021224, 6827108476]  # شناسه تلگرام ادمین‌ها
 
@@ -148,7 +148,7 @@ async def register_referral(user_id, referrer_id):
             chat_id=referrer_id,
             text=f"🎉 یک زیرمجموعه جدید اضافه شد!\n"
                  f"🔗 تعداد زیرمجموعه‌ها: {referrals}\n"
-                 f"💰 موجودی: {balance} دوج‌کوین"
+                 f"💰 موجودی: {balance:.2f} تون‌کوین"
         )
 
 # پروفایل کاربر
@@ -160,7 +160,7 @@ async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
         referrals, balance, league = user_data
         await update.message.reply_text(f"👤 پروفایل شما:\n\n"
                                         f"🔗 تعداد زیرمجموعه‌ها: {referrals}\n"
-                                        f"💰 موجودی دوج‌کوین: {balance}\n"
+                                        f"💰 موجودی: {balance:.2f} تون‌کوین"
                                         f"🏆 سطح: {league}")
     else:
         await update.message.reply_text("⛔️ اطلاعاتی یافت نشد. لطفاً ابتدا /start را بزنید.")
@@ -173,7 +173,7 @@ async def referral_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
     invite_link = f"https://t.me/{bot_username}?start={user_id}"
     await update.message.reply_text(
         f"🔗 لینک دعوت اختصاصی شما:\n\n{invite_link}\n\n"
-        "هر کاربری که با این لینک عضو شود، به موجودی شما دوج‌کوین اضافه می‌شود!"
+        "هر کاربری که با این لینک عضو شود، به موجودی شما تون‌کوین اضافه می‌شود!"
     )
 
 # درخواست برداشت
@@ -183,10 +183,10 @@ async def withdrawal_request(update: Update, context: ContextTypes.DEFAULT_TYPE)
     user_data = cursor.fetchone()
 
     if user_data is None or user_data[0] < MIN_WITHDRAWAL_AMOUNT:
-        await update.message.reply_text("💼 لطفاً آدرس ولت دوج‌کوین خود را وارد کنید:")
+        await update.message.reply_text("💼 لطفاً آدرس ولت تون‌کوین خود را وارد کنید:")
         return WAITING_FOR_WALLET
     else:
-        await update.message.reply_text(f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT} دوج‌کوین است.")
+        await update.message.reply_text(f"⛔️ حداقل موجودی برای برداشت {MIN_WITHDRAWAL_AMOUNT:.2f} تون‌کوین است.")
         return ConversationHandler.END
 
 # تایید آدرس ولت
@@ -205,7 +205,7 @@ async def confirm_wallet(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await update.message.reply_text(f"✅ درخواست برداشت ثبت شد.\n"
                                         f"آدرس ولت: {wallet_address}\n"
-                                        f"💰 موجودی فعلی: {new_balance} دوج‌کوین.")
+                                        f"💰 موجودی فعلی: {new_balance:.2f} تون‌کوین.")
         return ConversationHandler.END
     else:
         await update.message.reply_text("⛔️ موجودی کافی نیست.")
